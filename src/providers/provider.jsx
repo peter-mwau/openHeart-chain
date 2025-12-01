@@ -34,7 +34,6 @@ export function OpenHeartConnectButton() {
           chain: defineChain(11155111),
           sponsorGas: true,
         },
-        // smartAccount: false,
       }),
       createWallet("io.metamask"),
       createWallet("com.coinbase.wallet"),
@@ -48,34 +47,91 @@ export function OpenHeartConnectButton() {
       darkMode
         ? darkTheme({
             colors: {
-              separatorLine: "hsl(45, 93%, 47%)",
-              accentText: "hsl(41, 62%, 51%)",
-              modalBg: "hsl(221, 39%, 11%)",
-              borderColor: "hsl(58, 5%, 13%)",
-              selectedTextColor: "hsl(230, 7%, 22%)",
-              primaryText: "hsl(0, 0%, 100%)",
-              secondaryText: "hsl(0, 0%, 70%)",
-              accentButtonBg: "hsl(41, 80%, 49%)",
-              accentButtonText: "hsl(0, 0%, 100%)",
-              //   connectedButtonBg: "hsl(221, 39%, 11%)",
-              connectedButtonBg: "hsl(45, 93%, 48%)",
+              // Primary brand colors - Red/Pink gradient
+              primaryButtonBg:
+                "linear-gradient(135deg, #dc2626 0%, #db2777 100%)",
+              primaryButtonText: "#ffffff",
+
+              // Accent colors
+              accentText: "#f87171", // Red-400
+              accentButtonBg:
+                "linear-gradient(135deg, #dc2626 0%, #db2777 100%)",
+              accentButtonText: "#ffffff",
+
+              // Backgrounds
+              modalBg: "#111827", // Gray-900
+              accentBg: "rgba(220, 38, 38, 0.1)", // Red-600 with opacity
+
+              // Interactive states
+              primaryButtonBgHover:
+                "linear-gradient(135deg, #b91c1c 0%, #be185d 100%)",
+              accentButtonBgHover:
+                "linear-gradient(135deg, #b91c1c 0%, #be185d 100%)",
+
+              // Text
+              primaryText: "#f9fafb", // Gray-50
+              secondaryText: "#d1d5db", // Gray-300
+
+              // Borders and separators
+              borderColor: "#374151", // Gray-700
+              separatorLine: "#dc2626", // Red-600
+
+              // Connected state
+              connectedButtonBg: "rgba(220, 38, 38, 0.15)",
+              connectedButtonBgHover: "rgba(220, 38, 38, 0.25)",
+
+              // Misc
+              selectedTextColor: "#f9fafb",
+              skeletonBg: "#374151", // Gray-700
+
+              // Wallet selector
+              walletSelectorButtonHoverBg: "rgba(220, 38, 38, 0.1)",
             },
+            fontFamily: "Inter, system-ui, sans-serif",
           })
         : lightTheme({
             colors: {
-              separatorLine: "hsl(41, 80%, 49%)",
-              accentText: "hsl(41, 62%, 51%)",
-              modalBg: "hsl(0, 0%, 100%)",
-              borderColor: "hsl(0, 0%, 85%)",
-              selectedTextColor: "hsl(100, 100%, 100%)",
-              primaryText: "hsl(0, 0%, 0%)",
-              secondaryText: "hsl(0, 0%, 30%)",
-              accentButtonBg: "hsl(41, 80%, 49%)",
-              accentButtonText: "hsl(0, 0%, 100%)",
-              //   connectedButtonBg: "hsl(221, 39%, 11%)",
-              connectedButtonBg: "hsl(230, 26%, 95%)",
-              walletSelectorButtonHoverBg: "hsl(41, 80%, 49%)",
+              // Primary brand colors - Red/Pink gradient
+              primaryButtonBg:
+                "linear-gradient(135deg, #dc2626 0%, #db2777 100%)",
+              primaryButtonText: "#ffffff",
+
+              // Accent colors
+              accentText: "#dc2626", // Red-600
+              accentButtonBg:
+                "linear-gradient(135deg, #dc2626 0%, #db2777 100%)",
+              accentButtonText: "#ffffff",
+
+              // Backgrounds
+              modalBg: "#ffffff",
+              accentBg: "rgba(220, 38, 38, 0.05)", // Red-600 with opacity
+
+              // Interactive states
+              primaryButtonBgHover:
+                "linear-gradient(135deg, #b91c1c 0%, #be185d 100%)",
+              accentButtonBgHover:
+                "linear-gradient(135deg, #b91c1c 0%, #be185d 100%)",
+
+              // Text
+              primaryText: "#111827", // Gray-900
+              secondaryText: "#6b7280", // Gray-500
+
+              // Borders and separators
+              borderColor: "#e5e7eb", // Gray-200
+              separatorLine: "#fca5a5", // Red-300
+
+              // Connected state
+              connectedButtonBg: "rgba(220, 38, 38, 0.08)",
+              connectedButtonBgHover: "rgba(220, 38, 38, 0.15)",
+
+              // Misc
+              selectedTextColor: "#ffffff",
+              skeletonBg: "#f3f4f6", // Gray-100
+
+              // Wallet selector
+              walletSelectorButtonHoverBg: "rgba(220, 38, 38, 0.05)",
             },
+            fontFamily: "Inter, system-ui, sans-serif",
           }),
     [darkMode]
   );
@@ -85,25 +141,36 @@ export function OpenHeartConnectButton() {
       client={client}
       wallets={wallets}
       connectButton={{
-        label: "SignUp or Login",
+        label: "Connect Wallet",
         style: {
-          background: darkMode ? "#eab308" : "#e5e7eb",
-          color: darkMode ? "white" : "black",
+          background: "linear-gradient(135deg, #dc2626 0%, #db2777 100%)",
+          color: "#ffffff",
           border: "none",
-          borderRadius: "8px",
-          padding: "5px 5px",
+          borderRadius: "12px",
+          padding: "12px 24px",
           fontSize: "16px",
-          fontWeight: "700",
+          fontWeight: "600",
           cursor: "pointer",
-          width: "70%",
           boxShadow: darkMode
-            ? "0 2px 8px 0 #facc15, 0 0 0 2px #facc15" // #facc15 is Tailwind yellow-500
-            : "0 0 0 2px #e5e7eb, 0 0 8px 2px #facc15",
+            ? "0 4px 20px rgba(220, 38, 38, 0.3), 0 0 0 1px rgba(220, 38, 38, 0.2)"
+            : "0 4px 20px rgba(220, 38, 38, 0.15), 0 0 0 1px rgba(220, 38, 38, 0.1)",
+          transition: "all 0.2s ease-in-out",
+          minWidth: "160px",
         },
       }}
       connectModal={{
         size: "compact",
-        showThirdwebBranding: true,
+        showThirdwebBranding: false,
+        title: "Welcome to OpenHeart Chain",
+        welcomeScreen: {
+          title: "Connect Your Heart",
+          subtitle: "Join our community of transparent giving",
+          img: {
+            src: "/logo-heart.png", // Add your logo here
+            width: 150,
+            height: 150,
+          },
+        },
       }}
       theme={customTheme}
     />

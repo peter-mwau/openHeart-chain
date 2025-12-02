@@ -27,12 +27,16 @@ function Navbar() {
   return (
     <header
       className={`fixed top-4 left-1/2 transform -translate-x-1/2 w-[95%] max-w-6xl z-50 transition-all duration-300 ${
+        darkMode
+          ? "bg-gray-900/95 border-gray-700/50"
+          : "bg-white/95 border-gray-200/50"
+      } ${
         scrolled
-          ? "bg-white/95 dark:bg-gray-900/95 backdrop-blur-lg shadow-xl rounded-2xl border border-gray-200/50 dark:border-gray-700/50"
-          : "bg-white/80 dark:bg-gray-900/80 backdrop-blur-md rounded-xl border border-gray-200/30 dark:border-gray-700/30"
+          ? " backdrop-blur-lg shadow-xl rounded-2xl border border-gray-200/50"
+          : "backdrop-blur-md rounded-xl border border-gray-200/30"
       }`}
     >
-      <nav className="max-w-6xl mx-auto px-6 py-3">
+      <nav className="max-w-6xl mx-auto px-6 py-3 transition-all duration-300">
         <div className="flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center space-x-3">
@@ -53,7 +57,11 @@ function Navbar() {
               <li key={link.name}>
                 <a
                   href={link.href}
-                  className="relative px-4 py-2 text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 font-medium rounded-lg transition-colors duration-200 group"
+                  className={
+                    darkMode
+                      ? "relative px-4 py-2 text-gray-300 hover:text-red-400 font-medium rounded-lg transition-colors duration-200 group"
+                      : "relative px-4 py-2 text-gray-800 hover:text-red-600 font-medium rounded-lg transition-colors duration-200 group"
+                  }
                 >
                   {link.name}
                   <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-0 h-0.5 bg-gradient-to-r from-red-500 to-pink-500 group-hover:w-3/4 transition-all duration-300"></span>
@@ -67,13 +75,17 @@ function Navbar() {
             {/* Dark Mode Toggle */}
             <button
               onClick={toggleDarkMode}
-              className="hidden md:flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200 group"
+              className={
+                darkMode
+                  ? "hidden md:flex items-center justify-center w-10 h-10 rounded-xl bg-gray-800 hover:bg-gray-700 transition-colors duration-200 group"
+                  : "hidden md:flex items-center justify-center w-10 h-10 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors duration-200 group"
+              }
               aria-label={`Switch to ${darkMode ? "light" : "dark"} mode`}
             >
               {darkMode ? (
-                <Sun className="w-5 h-5 text-yellow-500 group-hover:rotate-12 transition-transform" />
+                <Sun className="w-5 h-5 text-white hover:cursor-pointer group-hover:rotate-12 transition-transform" />
               ) : (
-                <Moon className="w-5 h-5 text-indigo-600 group-hover:rotate-12 transition-transform" />
+                <Moon className="w-5 h-5 text-red-600 hover:cursor-pointer group-hover:rotate-12 transition-transform" />
               )}
             </button>
 

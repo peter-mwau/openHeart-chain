@@ -1,18 +1,12 @@
 import React from "react";
-import VantaGlobeBG from "../components/VantaJS";
-import { useDarkMode } from "../contexts/themeContext";
 
 function Home() {
-  const { darkMode } = useDarkMode();
-
   return (
-    <>
-      <VantaGlobeBG darkMode={darkMode}>
-        <div>
-          <p>Welcome to the Home Page!</p>
-        </div>
-      </VantaGlobeBG>
-    </>
+    // <>
+    <div className="pt-[100px]">
+      <p className="text-3xl text-white">Welcome to the Home Page!</p>
+    </div>
+    // </>
   );
 }
 

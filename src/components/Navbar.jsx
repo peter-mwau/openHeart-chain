@@ -3,17 +3,17 @@ import { OpenHeartConnectButton } from "../providers/provider";
 import { useDarkMode } from "../contexts/themeContext";
 import { Heart, Menu, X, Sun, Moon } from "lucide-react";
 
-function Navbar() {
+function Navbar({ setCurrentPage, currentPage }) {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { darkMode, toggleDarkMode } = useDarkMode();
 
   const links = [
-    { name: "Home", href: "#home" },
-    { name: "About", href: "#about" },
-    { name: "Campaigns", href: "#campaigns" },
-    { name: "How it Works", href: "#how-it-works" },
-    { name: "Contact", href: "#contact" },
+    { name: "Home", href: "home" },
+    { name: "About", href: "about" },
+    { name: "Campaigns", href: "campaignDetails" },
+    { name: "How it Works", href: "how-it-works" },
+    { name: "Contact", href: "contact" },
   ];
 
   useEffect(() => {
@@ -55,17 +55,28 @@ function Navbar() {
           <ul className="hidden md:flex items-center space-x-1">
             {links.map((link) => (
               <li key={link.name}>
-                <a
-                  href={link.href}
-                  className={
+                <button
+                  onClick={() => setCurrentPage(link.href)}
+                  className={`${
                     darkMode
-                      ? "relative px-4 py-2 text-gray-300 hover:text-red-400 font-medium rounded-lg transition-colors duration-200 group"
-                      : "relative px-4 py-2 text-gray-800 hover:text-red-600 font-medium rounded-lg transition-colors duration-200 group"
-                  }
+                      ? "relative px-4 py-2 hover:cursor-pointer text-gray-300 hover:text-red-400 font-medium rounded-lg transition-colors duration-200 group"
+                      : "relative px-4 py-2 text-gray-800 hover:cursor-pointer hover:text-red-600 font-medium rounded-lg transition-colors duration-200 group"
+                  } ${
+                    currentPage === link.href
+                      ? "text-red-600 dark:text-red-400 font-semibold"
+                      : ""
+                  }`}
+                  aria-current={currentPage === link.href ? "page" : undefined}
                 >
                   {link.name}
-                  <span className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-0 h-0.5 bg-gradient-to-r from-red-500 to-pink-500 group-hover:w-3/4 transition-all duration-300"></span>
-                </a>
+                  <span
+                    className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 h-0.5 bg-gradient-to-r from-red-500 to-pink-500 transition-all duration-300 ${
+                      currentPage === link.href
+                        ? "w-3/4"
+                        : "w-0 group-hover:w-3/4"
+                    }`}
+                  ></span>
+                </button>
               </li>
             ))}
           </ul>
@@ -119,14 +130,21 @@ function Navbar() {
           <ul className="flex flex-col p-4 space-y-1">
             {links.map((link) => (
               <li key={link.name}>
-                <a
-                  href={link.href}
-                  className="flex items-center px-4 py-3 text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200 font-medium"
-                  onClick={() => setOpen(false)}
+                <button
+                  onClick={() => {
+                    setCurrentPage(link.href);
+                    setOpen(false);
+                  }}
+                  className={`flex items-center w-full text-left px-4 py-3 text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-200 font-medium ${
+                    currentPage === link.href
+                      ? "bg-gray-100 dark:bg-gray-700"
+                      : ""
+                  }`}
+                  aria-current={currentPage === link.href ? "page" : undefined}
                 >
                   <div className="w-2 h-2 bg-gradient-to-r from-red-500 to-pink-500 rounded-full mr-3"></div>
                   {link.name}
-                </a>
+                </button>
               </li>
             ))}
 

@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { ethers } from "ethers";
 import { toast } from "react-toastify";
 import DonorContractABI from "../artifacts/DonorContract.sol/DonorContract.json";
-import { TOKEN_BY_ADDRESS } from "../../config/tokens";
+import { TOKEN_BY_ADDRESS } from "../config/tokens";
 import {
   defineChain,
   getContract,

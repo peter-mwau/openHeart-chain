@@ -1,7 +1,7 @@
 // hooks/useTokenConversion.ts
 import { ethers } from 'ethers';
 import { useTokenPrices } from './useTokenPrices';
-import { TOKENS, TOKEN_BY_ADDRESS, TokenInfo } from '../../config/tokens';
+import { TOKENS, TOKEN_BY_ADDRESS } from '../config/tokens';
 
 
 export function useTokenConversion() {

@@ -5,13 +5,16 @@ import App from "./App.jsx";
 import { BrowserRouter } from "react-router-dom";
 import { ThirdwebProvider } from "thirdweb/react";
 import { ThemeProvider } from "./contexts/themeContext.jsx";
+import { CampaignsProvider } from "./contexts/campaignsContext.jsx";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <ThirdwebProvider>
       <BrowserRouter>
         <ThemeProvider>
-          <App />
+          <CampaignsProvider>
+            <App />
+          </CampaignsProvider>
         </ThemeProvider>
       </BrowserRouter>
     </ThirdwebProvider>

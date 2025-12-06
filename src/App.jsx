@@ -6,6 +6,7 @@ import CampaignDetails from "./pages/CampaignDetails.jsx";
 import { useState } from "react";
 import { useDarkMode } from "./contexts/themeContext.jsx";
 import VantaGlobeBG from "./components/VantaJS.jsx";
+import { ToastContainer } from "react-toastify";
 
 function App() {
   const [currentPage, setCurrentPage] = useState("home");
@@ -23,6 +24,18 @@ function App() {
   return (
     <VantaGlobeBG darkMode={darkMode}>
       <Navbar currentPage={currentPage} setCurrentPage={setCurrentPage} />
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
       {/* Main Content */}
       <div className="bg-transparent relative z-10">{renderPage()}</div>
     </VantaGlobeBG>

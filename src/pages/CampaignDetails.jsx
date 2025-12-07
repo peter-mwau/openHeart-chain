@@ -209,7 +209,7 @@ export default function CampaignDetails({ campaign, onBack }) {
     };
 
     fetchDonations();
-  }, [activeTab, campaign.id]);
+  }, [activeTab, campaign?.id]);
 
   useEffect(() => {
     const loadPortfolio = async () => {
@@ -232,7 +232,7 @@ export default function CampaignDetails({ campaign, onBack }) {
     };
 
     loadPortfolio();
-  }, [activeTab, campaign.id, campaign.goalAmount]);
+  }, [activeTab, campaign?.id, campaign?.goalAmount]);
 
   const formatDate = (timestamp) => {
     return new Date(Number(timestamp) * 1000).toLocaleDateString("en-US", {
@@ -247,7 +247,7 @@ export default function CampaignDetails({ campaign, onBack }) {
   const daysLeft = Math.max(
     0,
     Math.ceil(
-      (Number(campaign.deadline) * 1000 - Date.now()) / (1000 * 60 * 60 * 24)
+      (Number(campaign?.deadline) * 1000 - Date.now()) / (1000 * 60 * 60 * 24)
     )
   );
   const isActive = campaign.active && !campaign.cancelled && !campaign.funded;

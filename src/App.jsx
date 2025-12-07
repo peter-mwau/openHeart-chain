@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useDarkMode } from "./contexts/themeContext.jsx";
 import VantaGlobeBG from "./components/VantaJS.jsx";
 import { ToastContainer } from "react-toastify";
+import Manage from "./pages/ManagePage.jsx";
 
 function App() {
   const [currentPage, setCurrentPage] = useState("home");
@@ -16,6 +17,8 @@ function App() {
     switch (currentPage) {
       case "campaignDetails":
         return <CampaignDetails setCurrentPage={setCurrentPage} />;
+      case "manage":
+        return <Manage setCurrentPage={setCurrentPage} />;
       case "home":
       default:
         return <Home setCurrentPage={setCurrentPage} />;

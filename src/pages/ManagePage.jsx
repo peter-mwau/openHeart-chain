@@ -28,6 +28,7 @@ export default function Manage() {
           const isAdmin = await hasRole("DEFAULT_ADMIN_ROLE");
           const isTokenManager = await hasRole("TOKEN_MANAGER_ROLE");
           setHasAdminRole(isAdmin || isTokenManager);
+          console.log("Role: ", hasAdminRole);
         } catch (error) {
           console.error("Error checking role:", error);
           setHasAdminRole(false);

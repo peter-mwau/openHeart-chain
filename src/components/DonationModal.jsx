@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useContract } from "../hooks/useContract";
-import { useAccount } from "wagmi";
+import { useActiveAccount } from "thirdweb/react";
 import { ethers } from "ethers";
 import { toast } from "react-toastify";
 import { TOKENS_ARRAY } from "../config/tokens";
@@ -14,7 +14,9 @@ export default function DonationModal({
   onClose,
   onDonationSuccess,
 }) {
-  const { isConnected, address } = useAccount();
+  const account = useActiveAccount();
+  const address = account?.address;
+  const isConnected = !!address;
   const { donateToCampaign } = useContract();
   const [amount, setAmount] = useState("");
   const [isLoading, setIsLoading] = useState(false);

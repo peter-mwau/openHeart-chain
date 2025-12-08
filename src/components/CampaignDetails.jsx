@@ -29,6 +29,8 @@ export default function CampaignDetails({ campaign, onBack }) {
   } = useContract();
   const { darkMode } = useDarkMode();
 
+  console.log("Rendering CampaignDetails for campaign:", campaign);
+
   const safeConvertToUSD = (amount, tokenAddress) => {
     try {
       return convertToUSD(amount, tokenAddress);

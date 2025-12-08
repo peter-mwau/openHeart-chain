@@ -9,6 +9,7 @@ export default function CampaignsExplorerPage() {
 
   const handleSelectCampaign = (campaign) => {
     setSelectedCampaign(campaign);
+    console.log("Selected campaign:", campaign);
   };
 
   return (

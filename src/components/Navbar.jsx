@@ -11,7 +11,7 @@ function Navbar({ setCurrentPage, currentPage }) {
   const links = [
     { name: "Home", href: "home" },
     { name: "About", href: "about" },
-    { name: "Campaigns", href: "campaignDetails" },
+    { name: "Campaigns", href: "campaignPage" },
     { name: "Manage", href: "manage" },
     // { name: "How it Works", href: "how-it-works" },
     { name: "Contact", href: "contact" },

@@ -2,11 +2,11 @@ import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { useActiveAccount } from "thirdweb/react";
 import { toast } from "react-toastify";
-import DonationModal from "../components/DonationModal.jsx";
-import { useContract } from "../hooks/useContract";
-import { useTokenConversion } from "../hooks/useTokenConversion";
-import CampaignProgress from "../components/CampaignProgress.jsx";
-import PortfolioSummary from "../components/PortfolioSummary.jsx";
+import DonationModal from "./DonationModal.jsx";
+import { useContract } from "../hooks/useContract.jsx";
+import { useTokenConversion } from "../hooks/useTokenConversion.js";
+import CampaignProgress from "./CampaignProgress.jsx";
+import PortfolioSummary from "./PortfolioSummary.jsx";
 import { useDarkMode } from "../contexts/themeContext.jsx";
 
 export default function CampaignDetails({ campaign, onBack }) {

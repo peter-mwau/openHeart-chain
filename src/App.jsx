@@ -1,13 +1,12 @@
 import "./App.css";
-// import { Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
-import CampaignDetails from "./pages/CampaignDetails.jsx";
 import { useState } from "react";
 import { useDarkMode } from "./contexts/themeContext.jsx";
 import VantaGlobeBG from "./components/VantaJS.jsx";
 import { ToastContainer } from "react-toastify";
 import Manage from "./pages/ManagePage.jsx";
+import CampaignsExplorerPage from "./pages/CampaignPage.jsx";
 
 function App() {
   const [currentPage, setCurrentPage] = useState("home");
@@ -15,8 +14,8 @@ function App() {
 
   const renderPage = () => {
     switch (currentPage) {
-      case "campaignDetails":
-        return <CampaignDetails setCurrentPage={setCurrentPage} />;
+      case "campaignPage":
+        return <CampaignsExplorerPage setCurrentPage={setCurrentPage} />;
       case "manage":
         return <Manage setCurrentPage={setCurrentPage} />;
       case "home":

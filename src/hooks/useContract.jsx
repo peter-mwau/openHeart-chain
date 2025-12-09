@@ -497,19 +497,57 @@ export function useContract() {
     }
   };
 
-  //check role
+  // check role
   const hasRole = async (role) => {
     try {
+      console.log(`🔍 Checking role: "${role}" for address: ${address}`);
+
+      if (!contract) {
+        console.error("❌ Contract not initialized");
+        return false;
+      }
+
+      if (!address) {
+        console.error("❌ No address available");
+        return false;
+      }
+
+      // Check if the contract has the hasRole method
+      console.log("📋 Contract methods:", Object.keys(contract));
+
       const roleBytes = ethers.keccak256(ethers.toUtf8Bytes(role));
-      const hasRole = await readContract({
+      console.log(`📝 Role bytes for "${role}":`, roleBytes);
+
+      console.log("📞 Calling contract.hasRole with params:", [
+        roleBytes,
+        address,
+      ]);
+
+      const result = await readContract({
         contract,
         method: "hasRole",
         params: [roleBytes, address],
       });
-      return hasRole;
+
+      console.log(`✅ Role "${role}" check result:`, result);
+      return result;
     } catch (err) {
-      console.error("Error checking role:", err);
-      return false;
+      console.error(`❌ Error checking role "${role}":`, err);
+      console.error("Error details:", err.message);
+
+      // Try alternative method name if exists
+      try {
+        console.log(
+          "🔄 Trying alternative method 'hasRole' without readContract wrapper..."
+        );
+        const roleBytes = ethers.keccak256(ethers.toUtf8Bytes(role));
+        const result = await contract.hasRole(roleBytes, address);
+        console.log(`✅ Alternative method result for "${role}":`, result);
+        return result;
+      } catch (altErr) {
+        console.error("❌ Alternative method also failed:", altErr.message);
+        return false;
+      }
     }
   };
 

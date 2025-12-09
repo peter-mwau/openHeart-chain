@@ -264,7 +264,7 @@ export default function CampaignDetails({ campaign, onBack }) {
 
   return (
     <div
-      className={`h-[85vh] overflow-y-auto rounded-2xl ${
+      className={`h-[75vh] overflow-y-auto rounded-2xl ${
         darkMode
           ? "bg-gradient-to-b from-slate-900 to-gray-900"
           : "bg-gradient-to-b from-red-50 to-white"
@@ -363,7 +363,7 @@ export default function CampaignDetails({ campaign, onBack }) {
               <button
                 key={key}
                 onClick={() => setActiveTab(key)}
-                className={`flex items-center space-x-2 px-5 py-3 rounded-xl font-medium transition-all duration-300 ${
+                className={`flex items-center space-x-2 px-5 py-3 rounded-xl font-medium transition-all mb-3 duration-300 ${
                   activeTab === key
                     ? darkMode
                       ? "bg-gradient-to-r from-red-900/40 to-pink-900/40 border border-red-800/40 text-white shadow-lg shadow-red-900/20"

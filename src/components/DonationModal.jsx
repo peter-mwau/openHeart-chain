@@ -209,10 +209,10 @@ export default function DonationModal({
   const progressImpact = calculateProgressImpact();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-auto">
       {/* Backdrop */}
       <div
-        className={`absolute inset-0 transition-opacity duration-500 ${
+        className={`absolute inset-0 transition-opacity duration-500 h-screen ${
           darkMode
             ? "bg-gradient-to-br from-gray-900/95 via-slate-900/95 to-red-950/95"
             : "bg-gradient-to-br from-red-50/95 via-pink-50/95 to-white/95"
@@ -222,7 +222,7 @@ export default function DonationModal({
 
       {/* Modal Container */}
       <div
-        className={`relative z-10 w-full max-w-md transform transition-all duration-300 ${
+        className={`relative z-10 w-full max-w-md transform transition-all duration-300 mt-[200px] ${
           darkMode
             ? "bg-gradient-to-br from-slate-900 to-gray-900"
             : "bg-gradient-to-br from-white to-red-50"
@@ -588,7 +588,7 @@ export default function DonationModal({
                         darkMode ? "text-white" : "text-gray-900"
                       }`}
                     >
-                      {progressImpact.toFixed(1)}%
+                      {progressImpact.toFixed(3)}%
                     </span>{" "}
                     of its funding goal.
                   </div>

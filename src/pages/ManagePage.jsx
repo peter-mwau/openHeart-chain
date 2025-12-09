@@ -24,25 +24,69 @@ export default function Manage() {
     const checkRole = async () => {
       if (isConnected && address) {
         try {
+          console.log("Starting role check...");
           setIsCheckingRole(true);
-          const isAdmin = await hasRole("DEFAULT_ADMIN_ROLE");
-          const isTokenManager = await hasRole("TOKEN_MANAGER_ROLE");
-          setHasAdminRole(isAdmin || isTokenManager);
-          console.log("Role: ", hasAdminRole);
+
+          // Try both possible role names
+          const roleNames = [
+            "DEFAULT_ADMIN_ROLE",
+            "ADMIN_ROLE",
+            "OWNER_ROLE",
+            "TOKEN_MANAGER_ROLE",
+          ];
+
+          let roleCheckResults = {};
+
+          for (const roleName of roleNames) {
+            try {
+              const result = await hasRole(roleName);
+              console.log(`Role ${roleName}:`, result);
+              roleCheckResults[roleName] = result;
+            } catch (err) {
+              console.log(`Error checking ${roleName}:`, err.message);
+              roleCheckResults[roleName] = false;
+            }
+          }
+
+          console.log("All role check results:", roleCheckResults);
+
+          // Check if any admin role is true
+          const isAdmin = Object.values(roleCheckResults).some(
+            (result) => result === true
+          );
+          console.log("Final hasAdminRole:", isAdmin);
+
+          setHasAdminRole(isAdmin);
+
+          if (!isAdmin) {
+            console.log(
+              "User does not have admin role. Available results:",
+              roleCheckResults
+            );
+          }
         } catch (error) {
-          console.error("Error checking role:", error);
+          console.error("Error in checkRole function:", error);
+          console.error("Error details:", error.message, error.stack);
           setHasAdminRole(false);
         } finally {
+          console.log("Setting isCheckingRole to false");
           setIsCheckingRole(false);
         }
       } else {
+        console.log("Not connected or no address, skipping role check");
         setIsCheckingRole(false);
         setHasAdminRole(false);
       }
     };
 
-    checkRole();
-  }, [isConnected, address, hasRole]);
+    // Add a small delay to ensure everything is loaded
+    const timer = setTimeout(() => {
+      checkRole();
+    }, 500);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected, address]);
 
   const handleSetTokenAllowed = async (e) => {
     e.preventDefault();

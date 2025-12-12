@@ -179,9 +179,31 @@ export function useContract() {
     const toastId = toast.loading("Processing donation...");
 
     try {
+      // Get token info with proper fallback
       const tokenInfo = TOKEN_BY_ADDRESS[tokenAddress?.toLowerCase()];
-      const decimals = tokenInfo?.decimals ?? 18;
+      const decimals = tokenInfo?.decimals || 18;
+
+      console.log("Donation details:", {
+        tokenAddress: tokenAddress,
+        tokenSymbol: tokenInfo?.symbol || "Unknown",
+        decimals: decimals,
+        amount: amount,
+        campaignId: campaignId,
+        tokenInfo: tokenInfo,
+      });
+
+      // Validate amount and parse with correct decimals
+      if (!amount || parseFloat(amount) <= 0) {
+        throw new Error("Invalid donation amount");
+      }
+
       const amountWei = ethers.parseUnits(amount, decimals);
+
+      console.log("Parsed amount:", {
+        original: amount,
+        inWei: amountWei.toString(),
+        decimals: decimals,
+      });
 
       toast.update(toastId, {
         render: "Confirming donation in your wallet...",
@@ -211,12 +233,25 @@ export function useContract() {
       };
     } catch (err) {
       console.error("Error donating to campaign:", err);
+      console.error("Error details:", {
+        message: err.message,
+        code: err.code,
+        reason: err.reason,
+        stack: err.stack,
+      });
 
       let errorMessage = "Failed to process donation";
-      if (err.code === "ACTION_REJECTED") {
+      if (err.code === "ACTION_REJECTED" || err.message?.includes("rejected")) {
         errorMessage = "Transaction was rejected by user";
       } else if (err.reason) {
         errorMessage = err.reason;
+      } else if (err.message?.includes("insufficient")) {
+        errorMessage = "Insufficient token balance";
+      } else if (err.message?.includes("allowance")) {
+        errorMessage =
+          "Insufficient token allowance. Please approve more tokens first.";
+      } else if (err.message?.includes("campaign not active")) {
+        errorMessage = "Campaign is not active or has ended";
       }
 
       toast.update(toastId, {

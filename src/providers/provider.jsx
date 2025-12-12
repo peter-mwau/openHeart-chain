@@ -21,7 +21,8 @@ export function OpenHeartConnectButton() {
         metadata: {
           name: "Open Heart",
           image: {
-            src: "/vite.svg",
+            src: "/love3.png",
+            color: "#800020",
             width: 150,
             height: 150,
           },
@@ -166,7 +167,7 @@ export function OpenHeartConnectButton() {
           title: "Connect Your Heart",
           subtitle: "Join our community of transparent giving",
           img: {
-            src: "/logo-heart.png", // Add your logo here
+            src: "/love1.svg", // Add your logo here
             width: 150,
             height: 150,
           },

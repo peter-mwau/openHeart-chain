@@ -5,8 +5,20 @@ import { ethers } from "ethers";
 import { toast } from "react-toastify";
 import { TOKENS_ARRAY } from "../config/tokens";
 import { useDarkMode } from "../contexts/themeContext";
+import ERC20_ABI from "../artifacts/UsdCoin.sol/UsdCoin.json";
+import { client } from "../services/client";
+import {
+  defineChain,
+  getContract,
+  prepareContractCall,
+  readContract,
+  sendTransaction,
+} from "thirdweb";
 
 const USDC_ADDRESS = import.meta.env.VITE_USDC_CONTRACT_ADDRESS || "";
+const ERC20_ABI_INTERFACE = ERC20_ABI.abi;
+const donateContractAddress =
+  import.meta.env.VITE_DONATE_CONTRACT_ADDRESS || "";
 
 export default function DonationModal({
   campaign,
@@ -27,63 +39,169 @@ export default function DonationModal({
   const [selectedToken, setSelectedToken] = useState(defaultToken);
   const { darkMode } = useDarkMode();
 
+  // Create a token contract instance using thirdweb
+  const getTokenContract = (tokenAddress) => {
+    if (!tokenAddress) return null;
+
+    return getContract({
+      client,
+      address: tokenAddress,
+      chain: defineChain(11155111), // Sepolia testnet
+      abi: ERC20_ABI_INTERFACE,
+    });
+  };
+
   const checkAllowance = async () => {
     if (!address || !amount || parseFloat(amount) <= 0) return false;
 
     try {
-      if (!selectedToken || !selectedToken.address) return false;
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const tokenContract = new ethers.Contract(
-        selectedToken.address,
-        [
-          "function allowance(address owner, address spender) view returns (uint256)",
-          "function approve(address spender, uint256 amount) returns (bool)",
-        ],
-        signer
-      );
+      if (!selectedToken || !selectedToken.address) {
+        console.error("No token selected");
+        return false;
+      }
 
-      const donationContractAddress = import.meta.env
-        .VITE_DONATE_CONTRACT_ADDRESS;
-      const currentAllowance = await tokenContract.allowance(
-        address,
-        donationContractAddress
-      );
-      const amountInWei = ethers.parseUnits(amount, selectedToken.decimals);
+      const donationContractAddress = donateContractAddress;
+      if (!donationContractAddress) {
+        console.error("Donation contract address not configured");
+        throw new Error("Donation contract address not configured");
+      }
 
-      return currentAllowance < amountInWei;
+      // Get token contract instance
+      const tokenContract = getTokenContract(selectedToken.address);
+      if (!tokenContract) {
+        console.error("Failed to create token contract");
+        return false;
+      }
+
+      // Get decimals from token config or read from contract
+      let decimals = selectedToken.decimals || 18;
+
+      // Optionally read decimals from contract if not in config
+      if (!selectedToken.decimals) {
+        try {
+          const contractDecimals = await readContract({
+            contract: tokenContract,
+            method: "decimals",
+          });
+          decimals = contractDecimals;
+          console.log("Read decimals from contract:", decimals);
+        } catch (error) {
+          console.warn(
+            "Could not read decimals from contract, using default:",
+            decimals
+          );
+        }
+      }
+
+      const amountInWei = ethers.parseUnits(amount, decimals);
+
+      console.log("Checking allowance with thirdweb:", {
+        owner: address,
+        spender: donationContractAddress,
+        tokenAddress: selectedToken.address,
+        tokenSymbol: selectedToken.symbol,
+        amount: amount,
+        amountInWei: amountInWei.toString(),
+        decimals: decimals,
+      });
+
+      // Read allowance using thirdweb
+      const allowance = await readContract({
+        contract: tokenContract,
+        method: "allowance",
+        params: [address, donationContractAddress],
+      });
+
+      console.log("Current allowance:", allowance.toString());
+      console.log("Required amount:", amountInWei.toString());
+      console.log("Has sufficient allowance:", allowance >= amountInWei);
+
+      return allowance < amountInWei;
     } catch (error) {
-      console.error("Error checking allowance:", error);
+      console.error("Error checking allowance with thirdweb:", error);
+      console.error("Error details:", error.message);
       return false;
     }
   };
 
   const approveTokens = async () => {
-    if (!address) return false;
+    if (!address) {
+      toast.error("Wallet not connected");
+      return false;
+    }
 
-    const toastId = toast.loading("Approving tokens...");
+    const toastId = toast.loading(
+      `Approving ${selectedToken?.symbol || "tokens"}...`
+    );
 
     try {
       if (!selectedToken || !selectedToken.address) {
         throw new Error("No token selected for approval");
       }
 
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const tokenContract = new ethers.Contract(
-        selectedToken.address,
-        ["function approve(address spender, uint256 amount) returns (bool)"],
-        signer
-      );
-
-      const amountInWei = ethers.parseUnits(amount, selectedToken.decimals);
       const donationContractAddress = import.meta.env
         .VITE_DONATE_CONTRACT_ADDRESS;
+      if (!donationContractAddress) {
+        throw new Error("Donation contract address not configured");
+      }
 
-      const tx = await tokenContract.approve(
-        donationContractAddress,
-        amountInWei
-      );
+      // Get token contract instance
+      const tokenContract = getTokenContract(selectedToken.address);
+      if (!tokenContract) {
+        throw new Error("Failed to create token contract");
+      }
+
+      // Get decimals from token config or read from contract
+      let decimals = selectedToken.decimals || 18;
+
+      // Optionally read decimals from contract if not in config
+      if (!selectedToken.decimals) {
+        try {
+          const contractDecimals = await readContract({
+            contract: tokenContract,
+            method: "decimals",
+          });
+          decimals = contractDecimals;
+          console.log("Read decimals from contract for approval:", decimals);
+        } catch (error) {
+          console.warn(
+            "Could not read decimals from contract, using default:",
+            decimals
+          );
+        }
+      }
+
+      const amountInWei = ethers.parseUnits(amount, decimals);
+
+      console.log("Approving tokens with thirdweb:", {
+        spender: donationContractAddress,
+        tokenAddress: selectedToken.address,
+        tokenSymbol: selectedToken.symbol,
+        amount: amount,
+        amountInWei: amountInWei.toString(),
+        decimals: decimals,
+      });
+
+      // Prepare approve transaction using thirdweb
+      const transaction = prepareContractCall({
+        contract: tokenContract,
+        method: "approve",
+        params: [donationContractAddress, amountInWei],
+      });
+
+      toast.update(toastId, {
+        render: "Confirming approval in your wallet...",
+        type: "info",
+        isLoading: true,
+      });
+
+      // Send transaction using thirdweb
+      const { transactionHash } = await sendTransaction({
+        transaction,
+        account,
+      });
+
+      console.log("Approval transaction sent:", transactionHash);
 
       toast.update(toastId, {
         render: "Approval submitted. Waiting for confirmation...",
@@ -91,7 +209,12 @@ export default function DonationModal({
         isLoading: true,
       });
 
-      await tx.wait();
+      // Wait for confirmation using ethers
+      if (window.ethereum) {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const receipt = await provider.waitForTransaction(transactionHash);
+        console.log("Approval confirmed:", receipt);
+      }
 
       toast.update(toastId, {
         render: `${selectedToken.symbol} tokens approved successfully!`,
@@ -103,11 +226,17 @@ export default function DonationModal({
       return true;
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
-      console.error("Approval error:", errMsg);
+      console.error("Approval error with thirdweb:", errMsg);
+      console.error("Full error:", error);
 
       let errorMessage = "Failed to approve tokens";
-      if (errMsg.includes("rejected")) {
+
+      if (errMsg.includes("rejected") || errMsg.includes("user rejected")) {
         errorMessage = "Approval was rejected";
+      } else if (errMsg.includes("insufficient funds")) {
+        errorMessage = "Insufficient funds for gas";
+      } else if (errMsg.includes("network changed")) {
+        errorMessage = "Network changed. Please reconnect";
       }
 
       toast.update(toastId, {
@@ -137,21 +266,42 @@ export default function DonationModal({
     setIsLoading(true);
 
     try {
+      console.log("Starting donation process...");
+
+      // Check allowance using thirdweb
+      console.log("Checking token allowance with thirdweb...");
       const requiresApproval = await checkAllowance();
+      console.log("Requires approval:", requiresApproval);
 
       if (requiresApproval) {
         setNeedsApproval(true);
+        console.log(
+          "Approval required, starting approval process with thirdweb..."
+        );
         const approved = await approveTokens();
+        console.log("Approval result:", approved);
+
         if (!approved) {
+          console.log("Approval failed");
           setIsLoading(false);
           return;
         }
         setNeedsApproval(false);
+        console.log("Approval successful, proceeding to donation...");
       }
 
+      // Now proceed with donation using your useContract hook
       const toastId = toast.loading("Processing your donation...");
 
       const tokenAddr = selectedToken?.address || USDC_ADDRESS;
+      console.log("Donating with:", {
+        tokenAddress: tokenAddr,
+        tokenSymbol: selectedToken?.symbol,
+        campaignId: campaign.id,
+        amount: amount,
+        decimals: selectedToken?.decimals || 18,
+      });
+
       await donateToCampaign(tokenAddr, campaign.id, amount);
 
       toast.update(toastId, {
@@ -167,15 +317,22 @@ export default function DonationModal({
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
       console.error("Donation error:", errMsg);
+      console.error("Full error:", error);
 
       let errorMessage = "Failed to process donation";
-      if (errMsg.includes("rejected")) {
+
+      if (errMsg.includes("rejected") || errMsg.includes("user rejected")) {
         errorMessage = "Transaction was rejected";
-      } else if (errMsg.includes("insufficient")) {
-        errorMessage = "Insufficient balance";
+      } else if (
+        errMsg.includes("insufficient") ||
+        errMsg.includes("balance")
+      ) {
+        errorMessage = "Insufficient token balance";
       } else if (errMsg.includes("allowance")) {
-        errorMessage = "Token approval needed. Please try again.";
+        errorMessage = "Insufficient allowance. Please approve more tokens.";
         setNeedsApproval(true);
+      } else if (errMsg.includes("campaign not active")) {
+        errorMessage = "Campaign is not active";
       }
 
       toast.error(errorMessage);

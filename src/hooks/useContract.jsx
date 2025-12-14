@@ -213,6 +213,7 @@ export function useContract() {
         contract,
         method: "donateToCampaign",
         params: [tokenAddress, campaignId, amountWei],
+        gas: 500000n, // Set reasonable gas limit to avoid "gas limit too high" error
       });
 
       toast.update(toastId, {

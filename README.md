@@ -142,12 +142,34 @@ src/
 
 ## 🔗 Smart Contract Deployment
 
-The platform is deployed on **Sepolia Testnet** and uses the following contracts:
+The platform is deployed on **Sepolia Testnet** (Chain ID: 11155111) and uses the following contracts:
 
 - **DonorContract**: Main contract for campaign creation and donations
 - **Supported Tokens**: USDC, WETH, WBTC (ERC-20 tokens on Sepolia)
 
 Contract interactions are handled via Thirdweb SDK with support for role-based access control (DEFAULT_ADMIN_ROLE, TOKEN_MANAGER_ROLE).
+
+### Sepolia Testnet Contract Addresses
+
+All contracts are **verified on Etherscan**, allowing anyone to view the source code and deploy to other networks:
+
+| Contract          | Address                                      |
+| ----------------- | -------------------------------------------- |
+| **DonorContract** | `0x6aF886fB19092E2E122273850eB3036314565478` |
+| **USDC Token**    | `0xB8AA56eF0a69ABC809a54d1c0d7fB07014Ce1C8F` |
+| **WETH Token**    | `0xa2D8705F1A4d289f1E6133Bf1c012295f9af0228` |
+| **WBTC Token**    | `0xf3160dc367b0bB201f0525583f34BaB65A89c552` |
+
+**View on Etherscan**: Search any of the above addresses on [Sepolia Etherscan](https://sepolia.etherscan.io/) to view the full source code and contract details.
+
+### Redeploying to Another Network
+
+Since all contracts are verified and source code is publicly available, you can:
+
+1. Copy the contract code from Etherscan
+2. Deploy to your desired EVM-compatible network (Ethereum mainnet, Polygon, Arbitrum, etc.)
+3. Update the contract addresses in your `.env.local` file
+4. Adjust the chain configuration in `wagmiConfig.js`
 
 ---
 
@@ -254,6 +276,23 @@ To use the platform:
 
 ---
 
+## 🗺️ What's Next for OpenHeart Chain
+
+We have an exciting roadmap ahead to expand and enhance the platform:
+
+- **Multi-Chain Expansion** - Extend to Ethereum mainnet, Polygon, Arbitrum, and other EVM-compatible chains to reach broader audiences
+- **Advanced Analytics Dashboard** - AI-powered insights into campaign effectiveness, donor engagement, and impact metrics
+- **Mobile Application** - Native iOS and Android apps for on-the-go donations and campaign management
+- **Real-World Identity Verification** - Integration with decentralized identity solutions for enhanced campaign creator accountability
+- **Recurring Donations** - Automated recurring donation features for sustained support of long-term causes
+- **Charitable Partnerships** - Collaborations with established charitable organizations to bridge traditional and blockchain philanthropy
+- **Governance Token** - Implementation of OpenHeart DAO token to decentralize platform decision-making and give community members voting power
+- **Cross-Border Optimization** - Enhanced payment systems for global accessibility and reduced transaction friction
+
+Stay tuned for updates on these exciting initiatives!
+
+---
+
 ## 🐛 Troubleshooting
 
 ### Wallet Connection Issues
@@ -292,14 +331,21 @@ Built with ❤️ for transparent and accountable charitable giving.
 
 **Key Technologies**:
 
-- Thirdweb for Web3 infrastructure
-- Vanta.js for beautiful animations
-- Tailwind CSS for responsive design
-- Ethereum/Sepolia for blockchain infrastructure
+- **Thirdweb** for Web3 infrastructure
+- **Vanta.js** for beautiful animations
+- **Tailwind CSS** for responsive design
+- **Ethereum/Sepolia** for blockchain infrastructure
+- **React & Vite** for fast development and modern UX
+
+**Special Thanks**:
+
+Thank you to all contributors, testers, and the blockchain community for supporting transparent and accountable charitable giving.
 
 ---
 
 **Happy Contributing! 🚀**
+
+Together, we're revolutionizing how people give and make a difference in the world.
 
 ## Expanding the ESLint configuration
 

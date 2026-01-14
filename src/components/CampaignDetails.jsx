@@ -9,7 +9,10 @@ import CampaignProgress from "./CampaignProgress.jsx";
 import PortfolioSummary from "./PortfolioSummary.jsx";
 import { useDarkMode } from "../contexts/themeContext.jsx";
 
+import CampaignAnalytics from "./CampaignAnalytics";
+
 export default function CampaignDetails({ campaign, onBack }) {
+
   const account = useActiveAccount();
   const address = account?.address;
   const isConnected = !!address;
@@ -31,175 +34,27 @@ export default function CampaignDetails({ campaign, onBack }) {
 
   console.log("Rendering CampaignDetails for campaign:", campaign);
 
-  const safeConvertToUSD = (amount, tokenAddress) => {
-    try {
-      return convertToUSD(amount, tokenAddress);
-    } catch (error) {
-      console.warn("convertToUSD failed, using fallback:", error);
-      const tokenInfo = getTokenConfig(tokenAddress);
-      const formattedAmount = parseFloat(
-        ethers.formatUnits(amount, tokenInfo.decimals)
-      );
+  // Removed local safeConvertToUSD and priceMap to use shared hook logic
 
-      const priceMap = {
-        USDC: 1,
-        WETH: 3213,
-        WBTC: 110464,
-      };
-
-      return formattedAmount * (priceMap[tokenInfo.symbol] || 1);
-    }
-  };
 
   useEffect(() => {
     const fetchDonations = async () => {
       if (activeTab === "donations") {
         setIsLoadingDonations(true);
         try {
+          // Always use the robust method if available
           if (getCampaignDonationsWithTokens) {
-            let enriched = await getCampaignDonationsWithTokens(campaign.id);
-
-            const needsMapping = enriched.some(
-              (d) => !d.tokenAddress || d.tokenAddress === "" || !d.decimals
-            );
-
-            if (needsMapping) {
-              try {
-                const portfolioData = await calculatePortfolioValue(
-                  campaign.id,
-                  campaign.goalAmount.toString(),
-                  getCampaignTokenBalances
-                );
-
-                const tokenCandidates = portfolioData.tokenBalances || [];
-
-                const isReasonableAmount = (amountNum, symbol) => {
-                  const ranges = {
-                    USDC: { min: 0.001, max: 1e9 },
-                    WETH: { min: 0.000001, max: 1e6 },
-                    WBTC: { min: 0.0000001, max: 1e5 },
-                  };
-                  const r = ranges[symbol] || { min: 0, max: Infinity };
-                  return amountNum >= r.min && amountNum <= r.max;
-                };
-
-                enriched = enriched.map((don) => {
-                  if (don.tokenAddress && don.decimals) return don;
-
-                  for (const t of tokenCandidates) {
-                    try {
-                      const amt = parseFloat(
-                        ethers.formatUnits(don.amount ?? "0", t.decimals)
-                      );
-                      if (
-                        !Number.isNaN(amt) &&
-                        isReasonableAmount(amt, t.symbol)
-                      ) {
-                        return {
-                          ...don,
-                          tokenAddress: t.tokenAddress || t.tokenAddress,
-                          symbol: t.symbol,
-                          decimals: t.decimals,
-                        };
-                      }
-                    } catch (e) {
-                      continue;
-                    }
-                  }
-
-                  return {
-                    ...don,
-                    tokenAddress:
-                      import.meta.env.VITE_USDC_CONTRACT_ADDRESS || "",
-                    symbol: don.symbol || "USDC",
-                    decimals: don.decimals ?? 6,
-                  };
-                });
-              } catch (err) {
-                console.warn("Failed to enrich donations from portfolio:", err);
-              }
-            }
-
+            const enriched = await getCampaignDonationsWithTokens(campaign.id);
             setCampaignDonations(enriched);
           } else {
+             // Fallback to basic if main method missing (shouldn't happen with updated hooks)
             const rawDonations = await getCampaignDonations(campaign.id);
-            const [tokenAddresses, tokenBalances] =
-              await getCampaignTokenBalances(campaign.id);
-
-            const tokenMap = {
-              [import.meta.env.VITE_USDC_CONTRACT_ADDRESS.toLowerCase()]: {
-                symbol: "USDC",
-                decimals: 6,
-              },
-              [import.meta.env.VITE_WETH_CONTRACT_ADDRESS.toLowerCase()]: {
-                symbol: "WETH",
+            setCampaignDonations(rawDonations.map(d => ({
+                ...d,
+                symbol: 'Unknown',
                 decimals: 18,
-              },
-              [import.meta.env.VITE_WBTC_CONTRACT_ADDRESS.toLowerCase()]: {
-                symbol: "WBTC",
-                decimals: 8,
-              },
-            };
-
-            const donationsWithTokens = rawDonations.map((donation, index) => {
-              const donor = donation[0] || "Unknown";
-              const amount = donation[1] || BigInt(0);
-              const timestamp = donation[2] || BigInt(0);
-
-              let tokenInfo =
-                tokenMap[
-                  import.meta.env.VITE_USDC_CONTRACT_ADDRESS.toLowerCase()
-                ];
-
-              if (amount > BigInt(10 ** 15) && amount < BigInt(10 ** 20)) {
-                tokenInfo =
-                  tokenMap[
-                    import.meta.env.VITE_WETH_CONTRACT_ADDRESS.toLowerCase()
-                  ];
-              } else if (
-                amount > BigInt(10 ** 7) &&
-                amount < BigInt(10 ** 10)
-              ) {
-                tokenInfo =
-                  tokenMap[
-                    import.meta.env.VITE_WBTC_CONTRACT_ADDRESS.toLowerCase()
-                  ];
-              }
-
-              const amountStr = amount.toString();
-              if (
-                amountStr === "5000000000000000000" ||
-                amountStr === "14000000000000000000"
-              ) {
-                tokenInfo =
-                  tokenMap[
-                    import.meta.env.VITE_WETH_CONTRACT_ADDRESS.toLowerCase()
-                  ];
-              } else if (amountStr === "9000000000000000000") {
-                tokenInfo =
-                  tokenMap[
-                    import.meta.env.VITE_WBTC_CONTRACT_ADDRESS.toLowerCase()
-                  ];
-              }
-
-              const matchedEntry = Object.entries(tokenMap).find(
-                ([, info]) => info.symbol === tokenInfo.symbol
-              );
-              const selectedAddress = matchedEntry
-                ? matchedEntry[0]
-                : import.meta.env.VITE_USDC_CONTRACT_ADDRESS;
-
-              return {
-                donor,
-                amount,
-                timestamp,
-                tokenAddress: selectedAddress,
-                symbol: tokenInfo.symbol,
-                decimals: tokenInfo.decimals,
-              };
-            });
-
-            setCampaignDonations(donationsWithTokens);
+                tokenAddress: ''
+            })));
           }
         } catch (error) {
           console.error("Error fetching donations:", error);
@@ -605,60 +460,11 @@ export default function CampaignDetails({ campaign, onBack }) {
         )}
 
         {activeTab === "analytics" && (
-          <div className="text-center py-12">
-            <div
-              className={`w-28 h-28 rounded-2xl flex items-center justify-center mx-auto mb-8 ${
-                darkMode
-                  ? "bg-gradient-to-br from-red-900/30 to-pink-900/30 border border-red-800/40"
-                  : "bg-gradient-to-br from-red-100 to-pink-100 border border-red-300"
-              }`}
-            >
-              <span className="text-4xl">📈</span>
-            </div>
-            <h3
-              className={`text-3xl font-bold mb-4 ${
-                darkMode ? "text-white" : "text-gray-900"
-              }`}
-            >
-              Advanced Analytics Dashboard
-            </h3>
-            <p
-              className={`text-xl mb-8 max-w-2xl mx-auto ${
-                darkMode ? "text-red-300" : "text-red-700"
-              }`}
-            >
-              Real-time insights, donor behavior analysis, and performance
-              metrics coming soon.
-            </p>
-            <div
-              className={`max-w-lg mx-auto rounded-2xl p-6 backdrop-blur-sm border ${
-                darkMode
-                  ? "bg-gradient-to-br from-red-900/20 to-pink-900/20 border-red-800/30"
-                  : "bg-gradient-to-br from-red-50 to-pink-50 border-red-200"
-              }`}
-            >
-              <div className="flex items-center space-x-3">
-                <span className="text-2xl">🚀</span>
-                <div>
-                  <h4
-                    className={`font-bold mb-1 ${
-                      darkMode ? "text-white" : "text-gray-900"
-                    }`}
-                  >
-                    Launching Soon
-                  </h4>
-                  <p
-                    className={`text-sm ${
-                      darkMode ? "text-red-300/80" : "text-red-700/80"
-                    }`}
-                  >
-                    Interactive charts, donor demographics, and real-time trend
-                    analysis
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+            <CampaignAnalytics
+                campaign={campaign}
+                donations={campaignDonations}
+                portfolio={portfolio}
+            />
         )}
 
         {activeTab === "donations" && (
@@ -817,7 +623,7 @@ export default function CampaignDetails({ campaign, onBack }) {
                             formattedAmount = "0";
                           }
 
-                          const usdValue = safeConvertToUSD(
+                          const usdValue = convertToUSD(
                             rawAmount,
                             donation?.tokenAddress || ""
                           );

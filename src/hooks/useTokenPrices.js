@@ -9,6 +9,8 @@ export function useTokenPrices(tokenIds) {
 
     useEffect(() => {
         const fetchPrices = async () => {
+            // Disabled API call to force hardcoded values for 2026 context
+            /*
             try {
                 setLoading(true);
                 setError(null);
@@ -27,16 +29,21 @@ export function useTokenPrices(tokenIds) {
             } catch (err) {
                 console.error('Error fetching token prices:', err);
                 setError('Failed to fetch current prices');
+            */
 
-                // Fallback to mock prices
-                setPrices({
-                    'usd-coin': { usd: 1, usd_24h_change: 0, last_updated_at: Date.now() / 1000 },
-                    'weth': { usd: 3213, usd_24h_change: 2.5, last_updated_at: Date.now() / 1000 },
-                    'wrapped-bitcoin': { usd: 110464, usd_24h_change: 1.2, last_updated_at: Date.now() / 1000 },
-                });
+            // Fallback to mock prices (using 2026 approximate values)
+            setPrices({
+                'usd-coin': { usd: 1, usd_24h_change: 0, last_updated_at: Date.now() / 1000 },
+                'weth': { usd: 3330, usd_24h_change: 2.5, last_updated_at: Date.now() / 1000 },
+                'wrapped-bitcoin': { usd: 95000, usd_24h_change: 1.2, last_updated_at: Date.now() / 1000 },
+            });
+
+            setLoading(false);
+            /*
             } finally {
                 setLoading(false);
             }
+            */
         };
 
         fetchPrices();

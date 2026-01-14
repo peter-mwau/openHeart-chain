@@ -738,8 +738,34 @@ export function useContract() {
         let tokenInfo =
           tokenMap[import.meta.env.VITE_USDC_CONTRACT_ADDRESS.toLowerCase()];
 
+        // Create a list of potential tokens to check
+        let tokenCandidates = Object.entries(tokenMap).map(([address, info]) => ({
+             address,
+             ...info
+        }));
+
+        // Optimization: Sort candidates to prioritize tokens that the campaign actually holds
+        // This helps resolve ambiguity (e.g. 100000000 units could be 100 USDC or 1 WBTC)
+        // If campaign has WBTC balance but no USDC, it's likely WBTC.
+        if (tokenAddresses && tokenBalances) {
+             const balanceMap = new Map();
+             tokenAddresses.forEach((addr, idx) => {
+                 if (tokenBalances[idx] > 0n) {
+                     balanceMap.set(addr.toLowerCase(), true);
+                 }
+             });
+
+             tokenCandidates.sort((a, b) => {
+                 const aHasBalance = balanceMap.has(a.address.toLowerCase());
+                 const bHasBalance = balanceMap.has(b.address.toLowerCase());
+                 if (aHasBalance && !bHasBalance) return -1;
+                 if (!aHasBalance && bHasBalance) return 1;
+                 return 0;
+             });
+        }
+
         // Try to find which token this donation belongs to
-        for (const [tokenAddress, info] of Object.entries(tokenMap)) {
+        for (const info of tokenCandidates) {
           const formattedAmount = parseFloat(
             ethers.formatUnits(donation.amount, info.decimals)
           );

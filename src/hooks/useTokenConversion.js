@@ -99,18 +99,13 @@ export function useTokenConversion() {
                 }
             }
 
-            // Method 4: Hardcoded fallback for testing
+            // Method 4: Hardcoded fallback for testing - REMOVED to rely on consistent fallbacks
             if (!tokenPrice) {
-                const fallbackPrices = {
-                    'USDC': 1,
-                    'WETH': 3213,
-                    'WBTC': 110464,
-                };
-                tokenPrice = fallbackPrices[tokenConfig.symbol];
-                console.log('🆘 Using Fallback Price:', {
-                    symbol: tokenConfig.symbol,
-                    price: tokenPrice
-                });
+                // Try looking up by symbol in case the keys are different in the prices object
+                const symbol = tokenConfig.symbol?.toLowerCase();
+                if (symbol && prices[symbol]) {
+                    tokenPrice = prices[symbol].usd;
+                }
             }
 
             console.log('🎯 Final Price:', { tokenPrice });

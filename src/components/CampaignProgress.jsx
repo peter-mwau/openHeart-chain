@@ -90,7 +90,7 @@ export default function CampaignProgress({
   };
 
   const computedGoalUSD = parseFloat(
-    ethers.formatUnits(campaign.goalAmount, detectedDecimals)
+    ethers.formatUnits(campaign.goalAmount, 6) // Force 6 decimals for USDC goal as per standard
   );
 
   let computedRaisedUSD =
@@ -110,11 +110,13 @@ export default function CampaignProgress({
 
   const progress =
     computedGoalUSD > 0
-      ? Math.min((computedRaisedUSD / computedGoalUSD) * 100, 100)
+      ? (computedRaisedUSD / computedGoalUSD) * 100
       : 0;
 
   const raisedUSD = computedRaisedUSD;
   const goalUSD = computedGoalUSD;
+  const overfundedAmount = Math.max(0, raisedUSD - goalUSD);
+  const isOverfunded = progress > 100;
 
   const daysLeft = campaign.deadline
     ? Math.max(
@@ -128,6 +130,11 @@ export default function CampaignProgress({
 
   // Get progress bar color based on progress
   const getProgressColor = () => {
+    if (isOverfunded) {
+        return darkMode
+        ? "from-amber-400 via-yellow-300 to-amber-500" // Golden/Amber for overfunded
+        : "from-amber-400 via-yellow-300 to-amber-500";
+    }
     if (progress >= 100) {
       return darkMode
         ? "from-green-500 via-emerald-400 to-green-600"
@@ -214,9 +221,14 @@ export default function CampaignProgress({
         >
           <div
             className={`h-full rounded-full bg-gradient-to-r ${getProgressColor()} transition-all duration-1000 ease-out`}
-            style={{ width: `${Math.min(progress, 100)}%` }}
+            style={{ width: `${Math.min(progress, 150)}%` }} // Allow bar to go a bit over if needed visual effect, but capping for UI sanity
           ></div>
         </div>
+        {isOverfunded && (
+            <div className={`text-xs font-bold mt-1 ${darkMode ? "text-amber-300" : "text-amber-600"}`}>
+                🔥 Overfunded by ${overfundedAmount.toFixed(0)} ({((progress - 100)).toFixed(1)}%)
+            </div>
+        )}
         {showDetails && (
           <div className="flex justify-between text-xs">
             <span
@@ -314,7 +326,6 @@ export default function CampaignProgress({
           </div>
 
           {/* Progress Bar */}
-          <div className="relative mb-6">
             <div
               className={`w-full rounded-full h-3 overflow-hidden ${
                 darkMode ? "bg-red-900/30" : "bg-red-200"
@@ -325,6 +336,28 @@ export default function CampaignProgress({
                 style={{ width: `${Math.min(progress, 100)}%` }}
               ></div>
             </div>
+
+            {/* Overfunding Indicator */}
+             {isOverfunded && (
+                <div className={`mt-2 mb-4 p-3 rounded-xl border flex items-center justify-between ${
+                    darkMode ? "bg-amber-900/20 border-amber-800/30" : "bg-amber-50 border-amber-200"
+                }`}>
+                    <div className="flex items-center space-x-2">
+                        <span className="text-xl">🔥</span>
+                        <div>
+                             <div className={`text-sm font-bold ${darkMode ? "text-amber-300" : "text-amber-700"}`}>
+                                Incredible! This campaign is overfunded.
+                             </div>
+                             <div className={`text-xs ${darkMode ? "text-amber-400/80" : "text-amber-700/80"}`}>
+                                Has raised {((progress - 100)).toFixed(1)}% more than the original goal.
+                             </div>
+                        </div>
+                    </div>
+                    <div className={`text-right font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>
+                        +${overfundedAmount.toFixed(2)}
+                    </div>
+                </div>
+            )}
 
             {/* Progress Markers */}
             <div className="flex justify-between mt-1">
@@ -345,7 +378,6 @@ export default function CampaignProgress({
                 </div>
               ))}
             </div>
-          </div>
         </div>
 
         {/* Stats Grid */}

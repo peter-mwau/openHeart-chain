@@ -1,11 +1,24 @@
 import { useState } from "react";
 import CreateCampaign from "../components/CreateCampaign";
 import CampaignsGrid from "../components/CampaignGrid.jsx";
+import DonationModal from "../components/DonationModal.jsx";
 import { useDarkMode } from "../contexts/themeContext.jsx";
 
-export default function Home() {
+export default function Home({ setCurrentPage }) {
   const [openCreateCampaign, setOpenCreateCampaign] = useState(false);
+  const [showDonationModal, setShowDonationModal] = useState(false);
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
   const { darkMode } = useDarkMode();
+
+  const handleViewDetails = (campaign) => {
+    // Navigate to campaign explorer page where user can view details
+    setCurrentPage("campaignPage");
+  };
+
+  const handleDonate = (campaign) => {
+    setSelectedCampaign(campaign);
+    setShowDonationModal(true);
+  };
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -300,7 +313,10 @@ export default function Home() {
             </button>
           </div>
 
-          <CampaignsGrid />
+          <CampaignsGrid
+            onViewDetails={handleViewDetails}
+            onDonate={handleDonate}
+          />
         </section>
 
         {/* Testimonial/CTA Section */}
@@ -398,6 +414,22 @@ export default function Home() {
       {/* Create Campaign Modal */}
       {openCreateCampaign && (
         <CreateCampaign onClose={() => setOpenCreateCampaign(false)} />
+      )}
+
+      {/* Donation Modal */}
+      {showDonationModal && selectedCampaign && (
+        <DonationModal
+          campaign={selectedCampaign}
+          isOpen={showDonationModal}
+          onClose={() => {
+            setShowDonationModal(false);
+            setSelectedCampaign(null);
+          }}
+          onDonationSuccess={() => {
+            setShowDonationModal(false);
+            setSelectedCampaign(null);
+          }}
+        />
       )}
     </div>
   );

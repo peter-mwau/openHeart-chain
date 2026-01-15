@@ -18,6 +18,7 @@ export default function CampaignCard({
   const address = account?.address;
   const isConnected = !!address;
   const [isHovered, setIsHovered] = useState(false);
+  const [portfolioData, setPortfolioData] = useState(null);
   const { darkMode } = useDarkMode();
 
   const formatUSDC = (amount) => {
@@ -31,17 +32,26 @@ export default function CampaignCard({
   // Check if campaign is active
   const isActive = campaign.active && !campaign.cancelled && !campaign.funded;
   const isExpired = Date.now() > Number(campaign.deadline) * 1000;
-  const isSuccessful =
-    Number(campaign.totalDonated) >= Number(campaign.goalAmount);
 
-  // Calculate progress percentage
-  const progress =
-    Number(campaign.totalDonated) > 0
-      ? Math.min(
-          (Number(campaign.totalDonated) / Number(campaign.goalAmount)) * 100,
-          100
-        )
-      : 0;
+  // Calculate progress percentage using portfolio data if available
+  const progress = portfolioData
+    ? portfolioData.progress
+    : Number(campaign.totalDonated) > 0
+    ? Math.min(
+        (Number(campaign.totalDonated) / Number(campaign.goalAmount)) * 100,
+        100
+      )
+    : 0;
+
+  // Check if goal is achieved using portfolio data
+  const isSuccessful = progress >= 100;
+
+  // Get raised amount - use portfolio value if available
+  const raisedAmount = portfolioData
+    ? portfolioData.totalUSDValue
+    : parseFloat(ethers.formatUnits(campaign.totalDonated, 6));
+
+  const goalAmount = parseFloat(ethers.formatUnits(campaign.goalAmount, 6));
 
   // Get status color based on theme
   const getStatusColor = () => {
@@ -247,6 +257,7 @@ export default function CampaignCard({
             compact={true}
             showDetails={false}
             darkMode={darkMode}
+            onPortfolioUpdate={(portfolio) => setPortfolioData(portfolio)}
           />
 
           {/* Progress Stats */}
@@ -263,13 +274,8 @@ export default function CampaignCard({
                 darkMode ? "text-red-300" : "text-red-700"
               }`}
             >
-              <span className="font-bold">
-                {formatUSDC(campaign.totalDonated)}
-              </span>
-              <span className="opacity-70">
-                {" "}
-                / {formatUSDC(campaign.goalAmount)} USDC
-              </span>
+              <span className="font-bold">${raisedAmount.toFixed(0)}</span>
+              <span className="opacity-70"> / ${goalAmount.toFixed(0)}</span>
             </div>
           </div>
         </div>
@@ -315,14 +321,14 @@ export default function CampaignCard({
                 darkMode ? "text-white" : "text-gray-900"
               }`}
             >
-              {campaign.donorsCount || 0}
+              {portfolioData?.tokenBalances?.length || 0}
             </div>
             <div
               className={`text-xs ${
                 darkMode ? "text-pink-300" : "text-pink-600"
               }`}
             >
-              Donors
+              Tokens
             </div>
           </div>
 

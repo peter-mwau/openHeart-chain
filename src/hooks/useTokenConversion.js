@@ -23,14 +23,20 @@ export function useTokenConversion() {
         return { name: 'Unknown', symbol: 'UNKNOWN', decimals: 18, address: tokenAddress };
     };
 
-    const convertToUSD = (amount, tokenAddress) => {
-        if (!amount || !prices) {
-            console.log('convertToUSD: No amount or prices', { amount, prices });
+    const convertToUSD = (amount, tokenAddress, providedTokenConfig = null) => {
+        if (!amount) {
+            console.log('⚠️ convertToUSD: No amount provided');
+            return 0;
+        }
+
+        if (!prices || Object.keys(prices).length === 0) {
+            console.log('⚠️ convertToUSD: Prices not loaded yet', { prices, pricesLoading });
             return 0;
         }
 
         try {
-            const tokenConfig = getTokenConfig(tokenAddress);
+            // Use provided token config if available, otherwise look it up
+            const tokenConfig = providedTokenConfig || getTokenConfig(tokenAddress);
             console.log('🚀 convertToUSD Debug Start:', {
                 tokenAddress,
                 symbol: tokenConfig.symbol,
@@ -46,6 +52,7 @@ export function useTokenConversion() {
             );
 
             console.log('📊 Amount Conversion:', {
+                symbol: tokenConfig.symbol,
                 formattedAmount,
                 calculation: `${amount.toString()} / 10^${tokenConfig.decimals} = ${formattedAmount}`
             });
@@ -58,28 +65,28 @@ export function useTokenConversion() {
 
             let tokenPrice;
 
-            // Method 1: Coingecko ID
-            if (tokenConfig.coingeckoId) {
+            // Method 1: Coingecko ID (PRIMARY)
+            if (tokenConfig.coingeckoId && prices[tokenConfig.coingeckoId]) {
                 tokenPrice = prices[tokenConfig.coingeckoId]?.usd;
-                console.log('🔍 Price Check - Coingecko ID:', {
+                console.log('✅ Price found via Coingecko ID:', {
                     coingeckoId: tokenConfig.coingeckoId,
-                    price: tokenPrice,
-                    found: !!prices[tokenConfig.coingeckoId]
+                    price: tokenPrice
                 });
             }
 
-            // Method 2: Symbol lookup
+            // Method 2: Symbol lookup (SECONDARY)
             if (!tokenPrice && tokenConfig.symbol) {
                 const symbolKey = tokenConfig.symbol.toLowerCase();
-                tokenPrice = prices[symbolKey]?.usd;
-                console.log('🔍 Price Check - Symbol:', {
-                    symbol: symbolKey,
-                    price: tokenPrice,
-                    found: !!prices[symbolKey]
-                });
+                if (prices[symbolKey]) {
+                    tokenPrice = prices[symbolKey]?.usd;
+                    console.log('✅ Price found via Symbol:', {
+                        symbol: symbolKey,
+                        price: tokenPrice
+                    });
+                }
             }
 
-            // Method 3: Manual mapping fallback
+            // Method 3: Manual mapping fallback (TERTIARY)
             if (!tokenPrice) {
                 const symbolMapping = {
                     'USDC': 'usd-coin',
@@ -88,38 +95,31 @@ export function useTokenConversion() {
                 };
 
                 const mappedId = symbolMapping[tokenConfig.symbol];
-                if (mappedId) {
+                if (mappedId && prices[mappedId]) {
                     tokenPrice = prices[mappedId]?.usd;
-                    console.log('🔍 Price Check - Mapped ID:', {
+                    console.log('✅ Price found via Manual Mapping:', {
                         symbol: tokenConfig.symbol,
                         mappedId,
-                        price: tokenPrice,
-                        found: !!prices[mappedId]
+                        price: tokenPrice
                     });
                 }
             }
 
-            // Method 4: Hardcoded fallback for testing - REMOVED to rely on consistent fallbacks
             if (!tokenPrice) {
-                // Try looking up by symbol in case the keys are different in the prices object
-                const symbol = tokenConfig.symbol?.toLowerCase();
-                if (symbol && prices[symbol]) {
-                    tokenPrice = prices[symbol].usd;
-                }
-            }
-
-            console.log('🎯 Final Price:', { tokenPrice });
-
-            if (!tokenPrice) {
-                console.log('❌ No price found for token:', tokenConfig.symbol);
+                console.error('❌ NO PRICE FOUND for token:', {
+                    symbol: tokenConfig.symbol,
+                    coingeckoId: tokenConfig.coingeckoId,
+                    availablePrices: Object.keys(prices)
+                });
                 return 0;
             }
 
             const result = formattedAmount * tokenPrice;
-            console.log('✅ Final Calculation:', {
-                formattedAmount,
-                tokenPrice,
-                result,
+            console.log('✅ Final USD Conversion:', {
+                token: tokenConfig.symbol,
+                amount: formattedAmount,
+                price: tokenPrice,
+                result: result,
                 calculation: `${formattedAmount} ${tokenConfig.symbol} × $${tokenPrice} = $${result}`
             });
 
@@ -136,7 +136,16 @@ export function useTokenConversion() {
         goalAmount, // USDC goal amount (6 decimals)
         getCampaignTokenBalances) => {
         try {
+            console.log('🔍 calculatePortfolioValue: Starting for campaign', campaignId);
             const [tokenAddresses, balances] = await getCampaignTokenBalances(campaignId);
+
+            console.log('📦 Raw token data:', {
+                tokenCount: tokenAddresses.length,
+                tokens: tokenAddresses.map((addr, i) => ({
+                    address: addr,
+                    balance: balances[i].toString()
+                }))
+            });
 
             let totalUSDValue = 0;
             const tokenBalances = [];
@@ -144,7 +153,15 @@ export function useTokenConversion() {
             for (let i = 0; i < tokenAddresses.length; i++) {
                 const tokenAddress = tokenAddresses[i];
                 const balance = balances[i];
-                if (!balance || balance === BigInt(0)) continue;
+
+                console.log(`\n--- Processing token ${i + 1}/${tokenAddresses.length} ---`);
+                console.log('Token address:', tokenAddress);
+                console.log('Balance:', balance.toString());
+
+                if (!balance || balance === BigInt(0)) {
+                    console.log('⏭️ Skipping token with zero balance');
+                    continue;
+                }
 
                 // Resolve token config: try canonical mapping first, otherwise
                 // attempt an on-chain lookup for symbol/decimals and match by symbol
@@ -170,11 +187,14 @@ export function useTokenConversion() {
                             ]);
 
                             if (onchainSymbol) {
+                                console.log('🔍 On-chain token symbol:', onchainSymbol);
                                 // Try to find a matching token config by symbol
                                 const match = Object.values(TOKENS).find((t) => t.symbol === onchainSymbol);
                                 if (match) {
+                                    console.log('✅ Matched token config:', match.symbol, match.coingeckoId);
                                     tokenConfig = { ...match, address: tokenAddress };
                                 } else {
+                                    console.log('⚠️ No config match for symbol:', onchainSymbol);
                                     tokenConfig = {
                                         name: onchainSymbol,
                                         symbol: onchainSymbol,
@@ -190,7 +210,9 @@ export function useTokenConversion() {
                     }
                 }
 
-                const usdValue = convertToUSD(balance, tokenConfig.address ?? tokenAddress);
+                // Pass the resolved tokenConfig to avoid redundant lookups
+                const usdValue = convertToUSD(balance, tokenAddress, tokenConfig);
+                console.log(`💵 Token ${tokenConfig.symbol} USD value: $${usdValue.toFixed(2)}`);
 
                 totalUSDValue += usdValue;
 
@@ -203,11 +225,20 @@ export function useTokenConversion() {
                     decimals: tokenConfig.decimals,
                     usdEquivalent: usdValue.toFixed(6),
                 });
+
+                console.log(`Running total USD: $${totalUSDValue.toFixed(2)}`);
             }
 
             // Calculate progress
             const goalUSD = parseFloat(ethers.formatUnits(goalAmount, 6)); // USDC has 6 decimals
             const progress = goalUSD > 0 ? (totalUSDValue / goalUSD) * 100 : 0;
+
+            console.log('\n✅ Portfolio calculation complete:', {
+                totalUSDValue: totalUSDValue.toFixed(2),
+                goalUSD: goalUSD.toFixed(2),
+                progress: progress.toFixed(2) + '%',
+                tokenCount: tokenBalances.length
+            });
 
             return {
                 totalUSDValue,
@@ -217,7 +248,7 @@ export function useTokenConversion() {
                 raisedUSD: totalUSDValue
             };
         } catch (error) {
-            console.error('Error calculating portfolio:', error);
+            console.error('❌ Error calculating portfolio:', error);
             return {
                 totalUSDValue: 0,
                 tokenBalances: [],

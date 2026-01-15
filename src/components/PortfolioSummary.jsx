@@ -83,7 +83,7 @@ export default function PortfolioSummary({ portfolio, daysLeft }) {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Pie Chart Section */}
       <div
-        className={`rounded-2xl p-6 backdrop-blur-sm border ${
+        className={`rounded-2xl p-6 backdrop-blur-sm border overflow-visible ${
           darkMode
             ? "bg-gradient-to-br from-red-900/20 to-pink-900/20 border-red-800/30"
             : "bg-gradient-to-br from-red-50 to-pink-50 border-red-200"
@@ -108,7 +108,7 @@ export default function PortfolioSummary({ portfolio, daysLeft }) {
           </h4>
         </div>
 
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center space-y-8">
           {/* Pie Chart with custom styling */}
           <div className="relative">
             <PieChart data={pieData} size={200} darkMode={darkMode} />
@@ -125,7 +125,7 @@ export default function PortfolioSummary({ portfolio, daysLeft }) {
           </div>
 
           {/* Legend */}
-          <div className="mt-8 space-y-3 w-full">
+          <div className="w-full space-y-3">
             {portfolio.tokenBalances.map((token, index) => {
               const percentage =
                 portfolio.totalUSDValue > 0

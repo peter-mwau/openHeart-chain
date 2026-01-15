@@ -12,6 +12,7 @@ export default function CampaignsSidebar({
   const { campaigns, loading, error, refreshCampaigns } = useCampaigns();
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState("all");
+  const [portfolioData, setPortfolioData] = useState({}); // Track portfolio values by campaign ID
   const { darkMode: contextDarkMode } = useDarkMode();
   const darkMode = propDarkMode !== undefined ? propDarkMode : contextDarkMode;
 
@@ -403,6 +404,12 @@ export default function CampaignsSidebar({
                     compact={true}
                     showDetails={false}
                     className="mb-4"
+                    onPortfolioUpdate={(portfolio) =>
+                      setPortfolioData((prev) => ({
+                        ...prev,
+                        [campaign.id]: portfolio,
+                      }))
+                    }
                   />
 
                   {/* Stats */}
@@ -412,7 +419,10 @@ export default function CampaignsSidebar({
                         darkMode ? "text-white" : "text-gray-900"
                       }`}
                     >
-                      ${formatUSDC(campaign.totalDonated)}
+                      $
+                      {portfolioData[campaign.id]
+                        ? portfolioData[campaign.id].totalUSDValue.toFixed(0)
+                        : formatUSDC(campaign.totalDonated)}
                       <span
                         className={`text-xs font-normal ml-1 ${
                           darkMode ? "text-red-300/60" : "text-red-600/60"

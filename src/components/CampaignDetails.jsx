@@ -12,7 +12,6 @@ import { useDarkMode } from "../contexts/themeContext.jsx";
 import CampaignAnalytics from "./CampaignAnalytics";
 
 export default function CampaignDetails({ campaign, onBack }) {
-
   const account = useActiveAccount();
   const address = account?.address;
   const isConnected = !!address;
@@ -36,7 +35,6 @@ export default function CampaignDetails({ campaign, onBack }) {
 
   // Removed local safeConvertToUSD and priceMap to use shared hook logic
 
-
   useEffect(() => {
     const fetchDonations = async () => {
       if (activeTab === "donations") {
@@ -47,14 +45,16 @@ export default function CampaignDetails({ campaign, onBack }) {
             const enriched = await getCampaignDonationsWithTokens(campaign.id);
             setCampaignDonations(enriched);
           } else {
-             // Fallback to basic if main method missing (shouldn't happen with updated hooks)
+            // Fallback to basic if main method missing (shouldn't happen with updated hooks)
             const rawDonations = await getCampaignDonations(campaign.id);
-            setCampaignDonations(rawDonations.map(d => ({
+            setCampaignDonations(
+              rawDonations.map((d) => ({
                 ...d,
-                symbol: 'Unknown',
+                symbol: "Unknown",
                 decimals: 18,
-                tokenAddress: ''
-            })));
+                tokenAddress: "",
+              }))
+            );
           }
         } catch (error) {
           console.error("Error fetching donations:", error);
@@ -460,11 +460,11 @@ export default function CampaignDetails({ campaign, onBack }) {
         )}
 
         {activeTab === "analytics" && (
-            <CampaignAnalytics
-                campaign={campaign}
-                donations={campaignDonations}
-                portfolio={portfolio}
-            />
+          <CampaignAnalytics
+            campaign={campaign}
+            donations={campaignDonations}
+            portfolio={portfolio}
+          />
         )}
 
         {activeTab === "donations" && (
@@ -1005,7 +1005,7 @@ export default function CampaignDetails({ campaign, onBack }) {
                         <span className="text-xl">{stat.icon}</span>
                       </div>
                       <div
-                        className={`text-3xl font-bold ${
+                        className={`text-2xl font-bold ${
                           darkMode ? "text-white" : "text-gray-900"
                         }`}
                       >

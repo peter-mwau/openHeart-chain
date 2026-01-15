@@ -1,15 +1,13 @@
 import React, { useState } from "react";
-import { useDarkMode } from "../contexts/themeContext";
 
 export default function PieChart({
   data,
   size = 200,
   showTooltip = true,
-  darkMode,
+  darkMode = false,
 }) {
   const [hoveredSegment, setHoveredSegment] = useState(null);
-  const themeDarkMode = useDarkMode();
-  const isDarkMode = darkMode !== undefined ? darkMode : themeDarkMode.darkMode;
+  const isDarkMode = darkMode;
 
   if (!data || data.length === 0) {
     return (
@@ -45,33 +43,6 @@ export default function PieChart({
   const totalValue = data.reduce((sum, item) => sum + item.usdValue, 0);
   const segmentCount = data.length;
 
-  // Precompute segments with start positions
-  const circumference = 2 * Math.PI * 15.9155;
-  const segments = (() => {
-    const list = [];
-    let acc = 0;
-    for (const item of data) {
-      const segmentPercentage = Math.max(0, Math.min(100, item.percentage));
-      const startPercent = acc;
-      const segmentLength = (segmentPercentage / 100) * circumference;
-
-      // Add subtle gradient effect to colors
-      const baseColor = item.color;
-
-      list.push({
-        symbol: item.symbol,
-        color: baseColor,
-        hoverColor: item.hoverColor || adjustColor(baseColor, 1.2),
-        usdValue: item.usdValue,
-        percentage: segmentPercentage,
-        segmentLength,
-        startPercent,
-      });
-      acc += segmentPercentage;
-    }
-    return list;
-  })();
-
   // Helper function to adjust color brightness
   function adjustColor(color, factor) {
     if (color.startsWith("#")) {
@@ -89,6 +60,60 @@ export default function PieChart({
         .padStart(2, "0")}${newB.toString(16).padStart(2, "0")}`;
     }
     return color;
+  }
+
+  // Calculate segments using proper geometry
+  const createSegments = () => {
+    let currentAngle = 0;
+    return data.map((item) => {
+      const angle = (item.percentage / 100) * 360;
+      const segment = {
+        symbol: item.symbol,
+        color: item.color,
+        hoverColor: item.hoverColor || adjustColor(item.color, 1.2),
+        usdValue: item.usdValue,
+        percentage: item.percentage,
+        startAngle: currentAngle,
+        endAngle: currentAngle + angle,
+      };
+      currentAngle += angle;
+      return segment;
+    });
+  };
+
+  const segments = createSegments();
+
+  // Create SVG path for pie slice
+  const createPieSlice = (startAngle, endAngle, radius = 15.9155) => {
+    const start = polarToCartesian(21, 21, radius, endAngle);
+    const end = polarToCartesian(21, 21, radius, startAngle);
+    const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+
+    return [
+      "M",
+      21,
+      21,
+      "L",
+      start.x,
+      start.y,
+      "A",
+      radius,
+      radius,
+      0,
+      largeArcFlag,
+      0,
+      end.x,
+      end.y,
+      "Z",
+    ].join(" ");
+  };
+
+  function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
+    const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180.0;
+    return {
+      x: centerX + radius * Math.cos(angleInRadians),
+      y: centerY + radius * Math.sin(angleInRadians),
+    };
   }
 
   // Get token icon
@@ -125,8 +150,28 @@ export default function PieChart({
         width={size}
         height={size}
         viewBox="0 0 42 42"
-        className="transform -rotate-90 relative z-10"
+        className="relative z-10"
       >
+        <defs>
+          {segments.map((seg, index) => (
+            <linearGradient
+              key={`gradient-${index}`}
+              id={`segment-gradient-${index}`}
+              x1="0%"
+              y1="0%"
+              x2="100%"
+              y2="100%"
+            >
+              <stop offset="0%" stopColor={seg.color} stopOpacity="0.95" />
+              <stop
+                offset="100%"
+                stopColor={adjustColor(seg.color, 0.8)}
+                stopOpacity="0.95"
+              />
+            </linearGradient>
+          ))}
+        </defs>
+
         {/* Background circle */}
         <circle
           cx="21"
@@ -139,128 +184,85 @@ export default function PieChart({
           strokeWidth="4"
         />
 
-        {/* Shadow effect */}
+        {/* Shadow layer */}
         <circle
           cx="21"
-          cy="21"
-          r="15.9155"
+          cy="21.2"
+          r="16"
           fill="transparent"
-          stroke={
-            isDarkMode ? "rgba(0, 0, 0, 0.1)" : "rgba(255, 255, 255, 0.3)"
-          }
-          strokeWidth="3.5"
-          strokeDasharray="100 0"
+          stroke={isDarkMode ? "rgba(0, 0, 0, 0.2)" : "rgba(0, 0, 0, 0.05)"}
+          strokeWidth="0.5"
           className="blur-[1px]"
         />
 
-        {segments.map((seg, index) => {
-          const gap = Math.max(0, circumference - seg.segmentLength);
-          const strokeDasharray = `${seg.segmentLength} ${gap}`;
-          const cumulativePercent = seg.startPercent + seg.percentage;
-          const strokeDashoffset =
-            circumference * (1 - cumulativePercent / 100);
-
-          // Add subtle gradient to segment
-          const segmentId = `segment-gradient-${index}`;
-
-          return (
-            <g key={index}>
-              {/* Gradient definition */}
-              <defs>
-                <linearGradient
-                  id={segmentId}
-                  x1="0%"
-                  y1="0%"
-                  x2="100%"
-                  y2="100%"
-                >
-                  <stop offset="0%" stopColor={seg.color} stopOpacity="0.9" />
-                  <stop
-                    offset="100%"
-                    stopColor={adjustColor(seg.color, 0.8)}
-                    stopOpacity="0.9"
-                  />
-                </linearGradient>
-              </defs>
-
-              {/* Segment with gradient */}
-              <circle
-                cx="21"
-                cy="21"
-                r="15.9155"
-                fill="transparent"
-                stroke={`url(#${segmentId})`}
-                strokeWidth="3"
-                strokeDasharray={strokeDasharray}
-                strokeDashoffset={strokeDashoffset}
-                strokeLinecap="round"
-                className="transition-all duration-500 ease-out cursor-pointer drop-shadow-lg"
-                style={{
-                  filter:
-                    hoveredSegment === index
-                      ? `drop-shadow(0 0 8px ${adjustColor(
-                          seg.color,
-                          0.5
-                        )}) brightness(1.15)`
-                      : "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))",
-                  transform:
-                    hoveredSegment === index
-                      ? "scale(1.03) rotate(1deg)"
-                      : "scale(1)",
-                  transformOrigin: "center",
-                }}
-                onMouseEnter={() => setHoveredSegment(index)}
-                onMouseLeave={() => setHoveredSegment(null)}
-              />
-            </g>
-          );
-        })}
+        {/* Pie segments */}
+        {segments.map((seg, index) => (
+          <path
+            key={index}
+            d={createPieSlice(seg.startAngle, seg.endAngle)}
+            fill={`url(#segment-gradient-${index})`}
+            className="transition-all duration-300 ease-out cursor-pointer"
+            style={{
+              filter:
+                hoveredSegment === index
+                  ? `drop-shadow(0 0 8px ${adjustColor(
+                      seg.color,
+                      0.5
+                    )}) brightness(1.15)`
+                  : "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))",
+              transform: hoveredSegment === index ? "scale(1.02)" : "scale(1)",
+              transformOrigin: "center",
+            }}
+            onMouseEnter={() => setHoveredSegment(index)}
+            onMouseLeave={() => setHoveredSegment(null)}
+          />
+        ))}
 
         {/* Inner circle for depth */}
         <circle
           cx="21"
           cy="21"
-          r="13"
+          r="10.5"
+          fill={
+            isDarkMode ? "rgba(15, 23, 42, 0.8)" : "rgba(255, 255, 255, 0.9)"
+          }
+          className="backdrop-blur-sm"
+        />
+        <circle
+          cx="21"
+          cy="21"
+          r="10.5"
           fill="transparent"
           stroke={
-            isDarkMode ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)"
+            isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)"
           }
-          strokeWidth="0.5"
+          strokeWidth="0.3"
         />
       </svg>
 
       {/* Center display */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div
-          className={`text-center rounded-2xl p-4 backdrop-blur-sm border ${
-            isDarkMode
-              ? "bg-gradient-to-br from-red-900/30 to-pink-900/30 border-red-800/40"
-              : "bg-gradient-to-br from-red-50/80 to-pink-50/80 border-red-200"
-          }`}
-          style={{ width: size * 0.5, height: size * 0.5 }}
-        >
-          <div className="flex flex-col items-center justify-center h-full">
-            <div
-              className={`text-2xl font-bold mb-1 ${
-                isDarkMode ? "text-white" : "text-gray-900"
-              }`}
-            >
-              {segmentCount}
-            </div>
-            <div
-              className={`text-xs font-medium ${
-                isDarkMode ? "text-red-300" : "text-red-700"
-              }`}
-            >
-              Assets
-            </div>
-            <div
-              className={`text-xs mt-2 ${
-                isDarkMode ? "text-red-400/60" : "text-red-600/60"
-              }`}
-            >
-              ${totalValue.toFixed(0)}
-            </div>
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="text-center">
+          <div
+            className={`text-2xl font-bold mb-1 ${
+              isDarkMode ? "text-white" : "text-gray-900"
+            }`}
+          >
+            {segmentCount}
+          </div>
+          <div
+            className={`text-xs font-medium ${
+              isDarkMode ? "text-red-300" : "text-red-700"
+            }`}
+          >
+            Assets
+          </div>
+          <div
+            className={`text-xs mt-1 ${
+              isDarkMode ? "text-red-400/60" : "text-red-600/60"
+            }`}
+          >
+            ${totalValue.toFixed(0)}
           </div>
         </div>
       </div>
@@ -268,16 +270,16 @@ export default function PieChart({
       {/* Enhanced Tooltip */}
       {showTooltip && hoveredSegment !== null && (
         <div
-          className={`absolute z-50 rounded-xl p-4 backdrop-blur-sm border shadow-2xl transition-all duration-300 ${
+          className={`absolute z-50 rounded-xl p-4 backdrop-blur-sm border shadow-2xl transition-all duration-300 pointer-events-none ${
             isDarkMode
               ? "bg-gradient-to-br from-red-900/90 to-pink-900/90 border-red-800/50"
               : "bg-gradient-to-br from-white/95 to-red-50/95 border-red-300"
           }`}
           style={{
             top: "50%",
-            left: "110%",
+            left: size + 20,
             transform: "translateY(-50%)",
-            minWidth: "160px",
+            minWidth: "200px",
             animation: "fadeIn 0.2s ease-out",
           }}
         >
@@ -291,7 +293,7 @@ export default function PieChart({
             style={{
               left: "-6px",
               top: "50%",
-              transform: "translateY(-50%)",
+              transform: "translateY(-50%) rotate(45deg)",
             }}
           />
 
@@ -374,7 +376,6 @@ export default function PieChart({
         </div>
       )}
 
-      {/* Add fadeIn animation */}
       <style jsx>{`
         @keyframes fadeIn {
           from {

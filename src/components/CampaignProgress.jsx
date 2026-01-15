@@ -10,15 +10,37 @@ export default function CampaignProgress({
   showDetails = true,
   compact = false,
   showTokenBreakdown = false,
+  onPortfolioUpdate = null, // Optional callback to pass portfolio data to parent
 }) {
   const [portfolio, setPortfolio] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
-  const { calculatePortfolioValue } = useTokenConversion();
+  const {
+    calculatePortfolioValue,
+    prices,
+    loading: pricesLoading,
+  } = useTokenConversion();
   const { getCampaignTokenBalances } = useContract();
   const { darkMode } = useDarkMode();
 
   React.useEffect(() => {
+    // Skip if prices are still loading
+    if (pricesLoading) {
+      console.log("⏳ CampaignProgress: Waiting for prices to load...");
+      return;
+    }
+
     const loadPortfolio = async () => {
+      if (!prices || Object.keys(prices).length === 0) {
+        console.error("❌ CampaignProgress: Prices object is empty!", prices);
+        setLoading(false);
+        return;
+      }
+
+      console.log(
+        "✅ CampaignProgress: Prices loaded, calculating portfolio...",
+        prices
+      );
+
       setLoading(true);
       try {
         const portfolioData = await calculatePortfolioValue(
@@ -27,16 +49,31 @@ export default function CampaignProgress({
           getCampaignTokenBalances
         );
         setPortfolio(portfolioData);
-        console.log("Loaded portfolio data:", portfolioData);
+        console.log("✅ CampaignProgress: Loaded portfolio data:", {
+          totalUSDValue: portfolioData.totalUSDValue,
+          tokenCount: portfolioData.tokenBalances.length,
+          tokens: portfolioData.tokenBalances.map((t) => ({
+            symbol: t.symbol,
+            balance: t.balanceFormatted,
+            usdValue: t.usdValue,
+          })),
+        });
+        // Notify parent of portfolio update
+        if (onPortfolioUpdate) {
+          onPortfolioUpdate(portfolioData);
+        }
       } catch (error) {
-        console.error("Error loading portfolio:", error);
+        console.error("❌ CampaignProgress: Error loading portfolio:", error);
+        setPortfolio(null);
       } finally {
         setLoading(false);
       }
     };
 
     loadPortfolio();
-  }, [campaign.id, campaign.goalAmount]);
+    // Only re-run when campaign data changes or when pricesLoading becomes false
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaign.id, campaign.goalAmount, pricesLoading]);
 
   // Calculate progress using on-chain USDC data as fallback
   const detectDecimals = (goal, donated) => {
@@ -93,11 +130,31 @@ export default function CampaignProgress({
     ethers.formatUnits(campaign.goalAmount, 6) // Force 6 decimals for USDC goal as per standard
   );
 
-  let computedRaisedUSD =
-    portfolio && portfolio.totalUSDValue > 0
-      ? portfolio.totalUSDValue
-      : fallbackRaisedValue;
+  // Use portfolio value if available and valid, otherwise fall back to on-chain USDC data
+  let computedRaisedUSD = 0;
 
+  if (portfolio && portfolio.totalUSDValue > 0) {
+    // Portfolio calculation succeeded - use the accurate multi-token USD value
+    computedRaisedUSD = portfolio.totalUSDValue;
+    console.log("💰 Using portfolio USD value:", computedRaisedUSD);
+  } else if (
+    portfolio &&
+    portfolio.totalUSDValue === 0 &&
+    portfolio.tokenBalances.length > 0
+  ) {
+    // Portfolio exists but USD value is 0 - might be a pricing issue
+    console.warn(
+      "⚠️ Portfolio has tokens but USD value is 0. Token balances:",
+      portfolio.tokenBalances
+    );
+    computedRaisedUSD = fallbackRaisedValue;
+  } else {
+    // No portfolio data yet or empty portfolio - use fallback
+    computedRaisedUSD = fallbackRaisedValue;
+    console.log("📊 Using fallback raised value:", fallbackRaisedValue);
+  }
+
+  // Final safety check - try to parse totalDonated if all else fails
   if (
     (computedRaisedUSD === 0 || !isFinite(computedRaisedUSD)) &&
     campaign.totalDonated > 0n
@@ -105,13 +162,12 @@ export default function CampaignProgress({
     const attempted = computeMaxDonatedAcrossCandidates(campaign.totalDonated);
     if (attempted > 0) {
       computedRaisedUSD = attempted;
+      console.log("🔄 Using computed max donated value:", computedRaisedUSD);
     }
   }
 
   const progress =
-    computedGoalUSD > 0
-      ? (computedRaisedUSD / computedGoalUSD) * 100
-      : 0;
+    computedGoalUSD > 0 ? (computedRaisedUSD / computedGoalUSD) * 100 : 0;
 
   const raisedUSD = computedRaisedUSD;
   const goalUSD = computedGoalUSD;
@@ -131,7 +187,7 @@ export default function CampaignProgress({
   // Get progress bar color based on progress
   const getProgressColor = () => {
     if (isOverfunded) {
-        return darkMode
+      return darkMode
         ? "from-amber-400 via-yellow-300 to-amber-500" // Golden/Amber for overfunded
         : "from-amber-400 via-yellow-300 to-amber-500";
     }
@@ -225,9 +281,14 @@ export default function CampaignProgress({
           ></div>
         </div>
         {isOverfunded && (
-            <div className={`text-xs font-bold mt-1 ${darkMode ? "text-amber-300" : "text-amber-600"}`}>
-                🔥 Overfunded by ${overfundedAmount.toFixed(0)} ({((progress - 100)).toFixed(1)}%)
-            </div>
+          <div
+            className={`text-xs font-bold mt-1 ${
+              darkMode ? "text-amber-300" : "text-amber-600"
+            }`}
+          >
+            🔥 Overfunded by ${overfundedAmount.toFixed(0)} (
+            {(progress - 100).toFixed(1)}%)
+          </div>
         )}
         {showDetails && (
           <div className="flex justify-between text-xs">
@@ -326,58 +387,75 @@ export default function CampaignProgress({
           </div>
 
           {/* Progress Bar */}
+          <div
+            className={`w-full rounded-full h-3 overflow-hidden ${
+              darkMode ? "bg-red-900/30" : "bg-red-200"
+            }`}
+          >
             <div
-              className={`w-full rounded-full h-3 overflow-hidden ${
-                darkMode ? "bg-red-900/30" : "bg-red-200"
+              className={`h-full rounded-full bg-gradient-to-r ${getProgressColor()} transition-all duration-1000 ease-out shadow-lg`}
+              style={{ width: `${Math.min(progress, 100)}%` }}
+            ></div>
+          </div>
+
+          {/* Overfunding Indicator */}
+          {isOverfunded && (
+            <div
+              className={`mt-2 mb-4 p-3 rounded-xl border flex items-center justify-between ${
+                darkMode
+                  ? "bg-amber-900/20 border-amber-800/30"
+                  : "bg-amber-50 border-amber-200"
               }`}
             >
-              <div
-                className={`h-full rounded-full bg-gradient-to-r ${getProgressColor()} transition-all duration-1000 ease-out shadow-lg`}
-                style={{ width: `${Math.min(progress, 100)}%` }}
-              ></div>
-            </div>
-
-            {/* Overfunding Indicator */}
-             {isOverfunded && (
-                <div className={`mt-2 mb-4 p-3 rounded-xl border flex items-center justify-between ${
-                    darkMode ? "bg-amber-900/20 border-amber-800/30" : "bg-amber-50 border-amber-200"
-                }`}>
-                    <div className="flex items-center space-x-2">
-                        <span className="text-xl">🔥</span>
-                        <div>
-                             <div className={`text-sm font-bold ${darkMode ? "text-amber-300" : "text-amber-700"}`}>
-                                Incredible! This campaign is overfunded.
-                             </div>
-                             <div className={`text-xs ${darkMode ? "text-amber-400/80" : "text-amber-700/80"}`}>
-                                Has raised {((progress - 100)).toFixed(1)}% more than the original goal.
-                             </div>
-                        </div>
-                    </div>
-                    <div className={`text-right font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>
-                        +${overfundedAmount.toFixed(2)}
-                    </div>
-                </div>
-            )}
-
-            {/* Progress Markers */}
-            <div className="flex justify-between mt-1">
-              {[0, 25, 50, 75, 100].map((marker) => (
-                <div key={marker} className="relative">
+              <div className="flex items-center space-x-2">
+                <span className="text-xl">🔥</span>
+                <div>
                   <div
-                    className={`w-1 h-3 mx-auto ${
-                      darkMode ? "bg-red-800/40" : "bg-red-300/60"
-                    }`}
-                  ></div>
-                  <span
-                    className={`text-xs absolute -bottom-5 left-1/2 transform -translate-x-1/2 ${
-                      darkMode ? "text-red-400/60" : "text-red-600/60"
+                    className={`text-sm font-bold ${
+                      darkMode ? "text-amber-300" : "text-amber-700"
                     }`}
                   >
-                    {marker}%
-                  </span>
+                    Incredible! This campaign is overfunded.
+                  </div>
+                  <div
+                    className={`text-xs ${
+                      darkMode ? "text-amber-400/80" : "text-amber-700/80"
+                    }`}
+                  >
+                    Has raised {(progress - 100).toFixed(1)}% more than the
+                    original goal.
+                  </div>
                 </div>
-              ))}
+              </div>
+              <div
+                className={`text-right font-bold ${
+                  darkMode ? "text-white" : "text-gray-900"
+                }`}
+              >
+                +${overfundedAmount.toFixed(2)}
+              </div>
             </div>
+          )}
+
+          {/* Progress Markers */}
+          <div className="flex justify-between mt-1">
+            {[0, 25, 50, 75, 100].map((marker) => (
+              <div key={marker} className="relative">
+                <div
+                  className={`w-1 h-3 mx-auto ${
+                    darkMode ? "bg-red-800/40" : "bg-red-300/60"
+                  }`}
+                ></div>
+                <span
+                  className={`text-xs absolute -bottom-5 left-1/2 transform -translate-x-1/2 ${
+                    darkMode ? "text-red-400/60" : "text-red-600/60"
+                  }`}
+                >
+                  {marker}%
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Stats Grid */}

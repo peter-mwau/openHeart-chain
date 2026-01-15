@@ -12,38 +12,36 @@ export default function PieChart({
   if (!data || data.length === 0) {
     return (
       <div
-        className={`flex items-center justify-center rounded-full backdrop-blur-sm border ${
+        className={`flex items-center justify-center rounded-full backdrop-blur-xl border-2 ${
           isDarkMode
-            ? "bg-gradient-to-br from-red-900/20 to-pink-900/20 border-red-800/30"
-            : "bg-gradient-to-br from-red-50 to-pink-50 border-red-200"
+            ? "bg-gradient-to-br from-slate-900/40 to-red-950/40 border-red-800/20"
+            : "bg-gradient-to-br from-white/60 to-red-50/60 border-red-100/50"
         }`}
         style={{ width: size, height: size }}
       >
         <div className="text-center">
           <div
-            className={`text-4xl mb-2 ${
-              isDarkMode ? "text-red-400/40" : "text-red-600/40"
+            className={`text-5xl mb-3 ${
+              isDarkMode ? "opacity-30" : "opacity-40"
             }`}
           >
             📊
           </div>
           <div
-            className={`text-sm font-medium ${
-              isDarkMode ? "text-red-300/60" : "text-red-600/60"
+            className={`text-sm font-semibold tracking-wide ${
+              isDarkMode ? "text-red-400/50" : "text-red-600/50"
             }`}
           >
-            No data
+            No data available
           </div>
         </div>
       </div>
     );
   }
 
-  // Calculate total value for center display
   const totalValue = data.reduce((sum, item) => sum + item.usdValue, 0);
   const segmentCount = data.length;
 
-  // Helper function to adjust color brightness
   function adjustColor(color, factor) {
     if (color.startsWith("#")) {
       const hex = color.replace("#", "");
@@ -62,7 +60,6 @@ export default function PieChart({
     return color;
   }
 
-  // Calculate segments using proper geometry
   const createSegments = () => {
     let currentAngle = 0;
     return data.map((item) => {
@@ -70,7 +67,7 @@ export default function PieChart({
       const segment = {
         symbol: item.symbol,
         color: item.color,
-        hoverColor: item.hoverColor || adjustColor(item.color, 1.2),
+        hoverColor: item.hoverColor || adjustColor(item.color, 1.3),
         usdValue: item.usdValue,
         percentage: item.percentage,
         startAngle: currentAngle,
@@ -83,7 +80,6 @@ export default function PieChart({
 
   const segments = createSegments();
 
-  // Create SVG path for pie slice
   const createPieSlice = (startAngle, endAngle, radius = 15.9155) => {
     const start = polarToCartesian(21, 21, radius, endAngle);
     const end = polarToCartesian(21, 21, radius, startAngle);
@@ -116,7 +112,6 @@ export default function PieChart({
     };
   }
 
-  // Get token icon
   const getTokenIcon = (symbol) => {
     const icons = {
       USDC: "💵",
@@ -129,18 +124,19 @@ export default function PieChart({
   };
 
   return (
-    <div className="relative" style={{ width: size, height: size }}>
-      {/* Outer glow effect */}
+    <div
+      className="relative flex items-center justify-center"
+      style={{ width: size, height: size }}
+    >
+      {/* Outer glow on hover */}
       {hoveredSegment !== null && (
-        <div className="absolute inset-0 animate-pulse">
+        <div className="absolute inset-0 transition-all duration-500">
           <div
             className="w-full h-full rounded-full"
             style={{
-              background: `radial-gradient(circle, ${adjustColor(
-                segments[hoveredSegment].color,
-                0.3
-              )}20 0%, transparent 70%)`,
-              filter: "blur(8px)",
+              background: `radial-gradient(circle, ${segments[hoveredSegment].color}40 0%, ${segments[hoveredSegment].color}10 40%, transparent 70%)`,
+              filter: "blur(20px)",
+              animation: "pulse 2s ease-in-out infinite",
             }}
           />
         </div>
@@ -151,123 +147,152 @@ export default function PieChart({
         height={size}
         viewBox="0 0 42 42"
         className="relative z-10"
+        style={{ filter: "drop-shadow(0 4px 20px rgba(0, 0, 0, 0.15))" }}
       >
         <defs>
           {segments.map((seg, index) => (
-            <linearGradient
-              key={`gradient-${index}`}
-              id={`segment-gradient-${index}`}
-              x1="0%"
-              y1="0%"
-              x2="100%"
-              y2="100%"
-            >
-              <stop offset="0%" stopColor={seg.color} stopOpacity="0.95" />
-              <stop
-                offset="100%"
-                stopColor={adjustColor(seg.color, 0.8)}
-                stopOpacity="0.95"
-              />
-            </linearGradient>
+            <React.Fragment key={`defs-${index}`}>
+              <linearGradient
+                id={`segment-gradient-${index}`}
+                x1="0%"
+                y1="0%"
+                x2="100%"
+                y2="100%"
+              >
+                <stop offset="0%" stopColor={seg.color} stopOpacity="1" />
+                <stop
+                  offset="100%"
+                  stopColor={adjustColor(seg.color, 0.7)}
+                  stopOpacity="1"
+                />
+              </linearGradient>
+              <filter id={`glow-${index}`}>
+                <feGaussianBlur stdDeviation="0.5" result="coloredBlur" />
+                <feMerge>
+                  <feMergeNode in="coloredBlur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </React.Fragment>
           ))}
+
+          <radialGradient id="innerGradientDark">
+            <stop offset="0%" stopColor="rgba(15, 23, 42, 0.95)" />
+            <stop offset="100%" stopColor="rgba(30, 41, 59, 0.95)" />
+          </radialGradient>
+          <radialGradient id="innerGradientLight">
+            <stop offset="0%" stopColor="rgba(255, 255, 255, 0.98)" />
+            <stop offset="100%" stopColor="rgba(254, 242, 242, 0.98)" />
+          </radialGradient>
         </defs>
 
-        {/* Background circle */}
+        {/* Outer ring decoration */}
         <circle
           cx="21"
           cy="21"
-          r="16"
+          r="17"
           fill="transparent"
           stroke={
-            isDarkMode ? "rgba(220, 38, 38, 0.1)" : "rgba(239, 68, 68, 0.1)"
+            isDarkMode ? "rgba(220, 38, 38, 0.15)" : "rgba(239, 68, 68, 0.1)"
           }
-          strokeWidth="4"
-        />
-
-        {/* Shadow layer */}
-        <circle
-          cx="21"
-          cy="21.2"
-          r="16"
-          fill="transparent"
-          stroke={isDarkMode ? "rgba(0, 0, 0, 0.2)" : "rgba(0, 0, 0, 0.05)"}
           strokeWidth="0.5"
-          className="blur-[1px]"
+          strokeDasharray="1 2"
         />
 
         {/* Pie segments */}
-        {segments.map((seg, index) => (
-          <path
-            key={index}
-            d={createPieSlice(seg.startAngle, seg.endAngle)}
-            fill={`url(#segment-gradient-${index})`}
-            className="transition-all duration-300 ease-out cursor-pointer"
-            style={{
-              filter:
-                hoveredSegment === index
-                  ? `drop-shadow(0 0 8px ${adjustColor(
-                      seg.color,
-                      0.5
-                    )}) brightness(1.15)`
-                  : "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))",
-              transform: hoveredSegment === index ? "scale(1.02)" : "scale(1)",
-              transformOrigin: "center",
-            }}
-            onMouseEnter={() => setHoveredSegment(index)}
-            onMouseLeave={() => setHoveredSegment(null)}
-          />
-        ))}
+        <g>
+          {segments.map((seg, index) => (
+            <g key={index}>
+              {/* Shadow layer */}
+              <path
+                d={createPieSlice(seg.startAngle, seg.endAngle, 16.1)}
+                fill={isDarkMode ? "rgba(0, 0, 0, 0.3)" : "rgba(0, 0, 0, 0.1)"}
+                transform="translate(0.3, 0.3)"
+                className="blur-[0.5px]"
+              />
 
-        {/* Inner circle for depth */}
+              {/* Main segment */}
+              <path
+                d={createPieSlice(seg.startAngle, seg.endAngle)}
+                fill={`url(#segment-gradient-${index})`}
+                className="transition-all duration-500 ease-out cursor-pointer"
+                style={{
+                  filter:
+                    hoveredSegment === index
+                      ? `url(#glow-${index}) brightness(1.2) saturate(1.3)`
+                      : "brightness(1) saturate(1)",
+                  transform:
+                    hoveredSegment === index ? "scale(1.05)" : "scale(1)",
+                  transformOrigin: "center",
+                }}
+                onMouseEnter={() => setHoveredSegment(index)}
+                onMouseLeave={() => setHoveredSegment(null)}
+              />
+
+              {/* Highlight edge */}
+              <path
+                d={createPieSlice(seg.startAngle, seg.endAngle, 16)}
+                fill="transparent"
+                stroke="rgba(255, 255, 255, 0.3)"
+                strokeWidth="0.2"
+                className="pointer-events-none"
+              />
+            </g>
+          ))}
+        </g>
+
+        {/* Inner circle with glassmorphism */}
         <circle
           cx="21"
           cy="21"
-          r="10.5"
+          r="11"
           fill={
-            isDarkMode ? "rgba(15, 23, 42, 0.8)" : "rgba(255, 255, 255, 0.9)"
+            isDarkMode ? "url(#innerGradientDark)" : "url(#innerGradientLight)"
           }
-          className="backdrop-blur-sm"
         />
+
         <circle
           cx="21"
           cy="21"
-          r="10.5"
+          r="11"
           fill="transparent"
           stroke={
-            isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)"
+            isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)"
           }
           strokeWidth="0.3"
         />
       </svg>
 
-      {/* Center display */}
+      {/* Center content */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div className="text-center">
           <div
-            className={`text-2xl font-bold mb-1 ${
-              isDarkMode ? "text-white" : "text-gray-900"
+            className={`text-3xl font-bold mb-1 tracking-tight ${
+              isDarkMode
+                ? "text-transparent bg-clip-text bg-gradient-to-br from-white to-red-200"
+                : "text-transparent bg-clip-text bg-gradient-to-br from-gray-900 to-red-600"
             }`}
           >
             {segmentCount}
           </div>
           <div
-            className={`text-xs font-medium ${
-              isDarkMode ? "text-red-300" : "text-red-700"
+            className={`text-xs font-semibold uppercase tracking-wider ${
+              isDarkMode ? "text-red-400/80" : "text-red-600/80"
             }`}
           >
             Assets
           </div>
           <div
-            className={`text-xs mt-1 ${
-              isDarkMode ? "text-red-400/60" : "text-red-600/60"
+            className={`text-sm mt-2 font-bold ${
+              isDarkMode ? "text-red-300/70" : "text-red-700/70"
             }`}
           >
-            ${totalValue.toFixed(0)}
+            ${totalValue.toLocaleString()}
           </div>
         </div>
       </div>
 
-      {/* Enhanced Tooltip */}
+      {/* Tooltip - only shows when hovering and showTooltip is true */}
       {showTooltip && hoveredSegment !== null && (
         <div
           className={`absolute z-50 rounded-xl p-4 backdrop-blur-sm border shadow-2xl transition-all duration-300 pointer-events-none ${
@@ -377,6 +402,16 @@ export default function PieChart({
       )}
 
       <style jsx>{`
+        @keyframes pulse {
+          0%,
+          100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.7;
+          }
+        }
+
         @keyframes fadeIn {
           from {
             opacity: 0;

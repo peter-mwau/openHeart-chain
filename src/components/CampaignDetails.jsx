@@ -3,6 +3,7 @@ import { ethers } from "ethers";
 import { useActiveAccount } from "thirdweb/react";
 import { toast } from "react-toastify";
 import DonationModal from "./DonationModal.jsx";
+import WithdrawalModal from "./WithdrawalModal.jsx";
 import { useContract } from "../hooks/useContract.jsx";
 import { useTokenConversion } from "../hooks/useTokenConversion.js";
 import CampaignProgress from "./CampaignProgress.jsx";
@@ -17,6 +18,7 @@ export default function CampaignDetails({ campaign, onBack }) {
   const isConnected = !!address;
   const [activeTab, setActiveTab] = useState("overview");
   const [showDonationModal, setShowDonationModal] = useState(false);
+  const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
   const [campaignDonations, setCampaignDonations] = useState([]);
   const [isLoadingDonations, setIsLoadingDonations] = useState(false);
   const { getCampaignDonations } = useContract();
@@ -53,7 +55,7 @@ export default function CampaignDetails({ campaign, onBack }) {
                 symbol: "Unknown",
                 decimals: 18,
                 tokenAddress: "",
-              }))
+              })),
             );
           }
         } catch (error) {
@@ -76,7 +78,7 @@ export default function CampaignDetails({ campaign, onBack }) {
           const portfolioData = await calculatePortfolioValue(
             campaign.id,
             campaign.goalAmount.toString(),
-            getCampaignTokenBalances
+            getCampaignTokenBalances,
           );
           setPortfolio(portfolioData);
         } catch (error) {
@@ -104,16 +106,26 @@ export default function CampaignDetails({ campaign, onBack }) {
   const daysLeft = Math.max(
     0,
     Math.ceil(
-      (Number(campaign?.deadline) * 1000 - Date.now()) / (1000 * 60 * 60 * 24)
-    )
+      (Number(campaign?.deadline) * 1000 - Date.now()) / (1000 * 60 * 60 * 24),
+    ),
   );
   const isActive = campaign.active && !campaign.cancelled && !campaign.funded;
   const isExpired = Date.now() > Number(campaign.deadline) * 1000;
+  const isOwner =
+    address &&
+    campaign.creator &&
+    address.toLowerCase() === campaign.creator.toLowerCase();
+  const goalReached =
+    portfolio?.raisedUSD >=
+    (parseFloat(ethers.formatUnits(campaign.goalAmount, 6)) || 0);
+  const showWithdrawButton =
+    isOwner && (isExpired || (isActive && goalReached));
+  const showDonateButton = isActive && !isExpired && !isOwner;
 
   const recentDonations = [...campaignDonations]
     .sort((a, b) => Number(b.timestamp) - Number(a.timestamp))
     .filter(
-      (d) => Number(d.timestamp) * 1000 >= Date.now() - 24 * 60 * 60 * 1000
+      (d) => Number(d.timestamp) * 1000 >= Date.now() - 24 * 60 * 60 * 1000,
     )
     .slice(0, 5);
 
@@ -177,7 +189,23 @@ export default function CampaignDetails({ campaign, onBack }) {
               </div>
             </div>
             <div className="flex items-center space-x-3">
-              {isActive && !isExpired && (
+              {showWithdrawButton && (
+                <button
+                  onClick={() => setShowWithdrawalModal(true)}
+                  className={`px-8 py-3 rounded-xl font-bold transition-all duration-300 transform hover:scale-105 relative overflow-hidden ${
+                    darkMode
+                      ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-900/30"
+                      : "bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-400 hover:to-indigo-400 text-white shadow-lg shadow-purple-200"
+                  }`}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300" />
+                  <span className="relative z-10 flex items-center gap-2">
+                    <span className="text-lg">🏦</span>
+                    Withdraw Funds
+                  </span>
+                </button>
+              )}
+              {showDonateButton && (
                 <button
                   onClick={() => setShowDonationModal(true)}
                   className={`px-8 py-3 rounded-xl font-bold transition-all duration-300 transform hover:scale-105 relative overflow-hidden ${
@@ -224,8 +252,8 @@ export default function CampaignDetails({ campaign, onBack }) {
                       ? "bg-gradient-to-r from-red-900/40 to-pink-900/40 border border-red-800/40 text-white shadow-lg shadow-red-900/20"
                       : "bg-gradient-to-r from-red-100 to-pink-100 border border-red-300 text-red-700 shadow-lg shadow-red-200"
                     : darkMode
-                    ? "text-red-300 hover:text-white hover:bg-red-900/20"
-                    : "text-red-600 hover:text-red-700 hover:bg-red-50"
+                      ? "text-red-300 hover:text-white hover:bg-red-900/20"
+                      : "text-red-600 hover:text-red-700 hover:bg-red-50"
                 }`}
               >
                 <span className="text-lg">{icon}</span>
@@ -312,25 +340,25 @@ export default function CampaignDetails({ campaign, onBack }) {
                       value: campaign.cancelled
                         ? "Cancelled"
                         : campaign.funded
-                        ? "Funded"
-                        : isExpired
-                        ? "Ended"
-                        : "Active",
+                          ? "Funded"
+                          : isExpired
+                            ? "Ended"
+                            : "Active",
                       color: darkMode
                         ? campaign.cancelled
                           ? "text-red-400"
                           : campaign.funded
-                          ? "text-green-400"
-                          : isExpired
-                          ? "text-gray-400"
-                          : "text-blue-400"
+                            ? "text-green-400"
+                            : isExpired
+                              ? "text-gray-400"
+                              : "text-blue-400"
                         : campaign.cancelled
-                        ? "text-red-600"
-                        : campaign.funded
-                        ? "text-green-600"
-                        : isExpired
-                        ? "text-gray-600"
-                        : "text-blue-600",
+                          ? "text-red-600"
+                          : campaign.funded
+                            ? "text-green-600"
+                            : isExpired
+                              ? "text-gray-600"
+                              : "text-blue-600",
                     },
                     {
                       label: "Created",
@@ -350,7 +378,7 @@ export default function CampaignDetails({ campaign, onBack }) {
                     {
                       label: "Goal Amount",
                       value: `$${parseFloat(
-                        ethers.formatUnits(campaign.goalAmount, 6)
+                        ethers.formatUnits(campaign.goalAmount, 6),
                       ).toFixed(2)} USDC`,
                       color: darkMode ? "text-white" : "text-gray-900",
                     },
@@ -359,7 +387,7 @@ export default function CampaignDetails({ campaign, onBack }) {
                       value: portfolio?.raisedUSD
                         ? `$${portfolio.raisedUSD.toFixed(2)} (USD equiv)`
                         : `${parseFloat(
-                            ethers.formatUnits(campaign.totalDonated, 6)
+                            ethers.formatUnits(campaign.totalDonated, 6),
                           ).toFixed(2)} USDC`,
                       color: darkMode ? "text-green-300" : "text-green-700",
                     },
@@ -604,7 +632,7 @@ export default function CampaignDetails({ campaign, onBack }) {
                     >
                       {campaignDonations
                         .sort(
-                          (a, b) => Number(b.timestamp) - Number(a.timestamp)
+                          (a, b) => Number(b.timestamp) - Number(a.timestamp),
                         )
                         .map((donation, index) => {
                           const rawAmount = donation?.amount ?? "0";
@@ -617,7 +645,7 @@ export default function CampaignDetails({ campaign, onBack }) {
                           try {
                             formattedAmount = ethers.formatUnits(
                               rawAmount,
-                              decimals
+                              decimals,
                             );
                           } catch (err) {
                             formattedAmount = "0";
@@ -625,7 +653,7 @@ export default function CampaignDetails({ campaign, onBack }) {
 
                           const usdValue = convertToUSD(
                             rawAmount,
-                            donation?.tokenAddress || ""
+                            donation?.tokenAddress || "",
                           );
 
                           return (
@@ -671,7 +699,7 @@ export default function CampaignDetails({ campaign, onBack }) {
                                       }`}
                                     >
                                       {new Date(
-                                        Number(donation.timestamp) * 1000
+                                        Number(donation.timestamp) * 1000,
                                       ).toLocaleDateString("en-US", {
                                         year: "numeric",
                                         month: "short",
@@ -754,7 +782,7 @@ export default function CampaignDetails({ campaign, onBack }) {
                                           ? Math.min(
                                               (usdValue / portfolio.goalUSD) *
                                                 100,
-                                              100
+                                              100,
                                             )
                                           : 0
                                       }%`,
@@ -836,7 +864,7 @@ export default function CampaignDetails({ campaign, onBack }) {
                         try {
                           formattedAmount = ethers.formatUnits(
                             rawAmount,
-                            decimals
+                            decimals,
                           );
                         } catch (err) {
                           formattedAmount = "0";
@@ -876,7 +904,7 @@ export default function CampaignDetails({ campaign, onBack }) {
                               }`}
                             >
                               {new Date(
-                                Number(donation.timestamp) * 1000
+                                Number(donation.timestamp) * 1000,
                               ).toLocaleDateString()}
                             </div>
                           </div>
@@ -1068,6 +1096,15 @@ export default function CampaignDetails({ campaign, onBack }) {
         onClose={() => setShowDonationModal(false)}
         onDonationSuccess={() => {
           toast.success("Donation completed successfully!");
+        }}
+      />
+
+      <WithdrawalModal
+        campaign={campaign}
+        isOpen={showWithdrawalModal}
+        onClose={() => setShowWithdrawalModal(false)}
+        onWithdrawalSuccess={() => {
+          toast.success("Withdrawal completed successfully!");
         }}
       />
     </div>

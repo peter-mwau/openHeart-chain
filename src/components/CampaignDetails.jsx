@@ -33,7 +33,7 @@ export default function CampaignDetails({ campaign, onBack }) {
   } = useContract();
   const { darkMode } = useDarkMode();
 
-  console.log("Rendering CampaignDetails for campaign:", campaign);
+  // console.log("Rendering CampaignDetails for campaign:", campaign);
 
   // Removed local safeConvertToUSD and priceMap to use shared hook logic
 

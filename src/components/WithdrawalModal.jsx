@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { useActiveAccount } from "thirdweb/react";
 import { toast } from "react-toastify";
 import { useContract } from "../hooks/useContract.jsx";
 import { useDarkMode } from "../contexts/themeContext.jsx";
+import { useTokenConversion } from "../hooks/useTokenConversion";
 
 export default function WithdrawalModal({
   campaign,
@@ -14,10 +15,16 @@ export default function WithdrawalModal({
   const account = useActiveAccount();
   const address = account?.address;
   const [isProcessing, setIsProcessing] = useState(false);
+  const [portfolio, setPortfolio] = useState(null);
+  const [showConfirm, setShowConfirm] = useState(false);
   const { darkMode } = useDarkMode();
-  const { withdrawFromCampaign } = useContract();
+  const { withdrawFunds, getCampaignTokenBalances } = useContract();
+  const { calculatePortfolioValue, loading: pricesLoading } =
+    useTokenConversion();
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (!isOpen) setShowConfirm(false);
+  }, [isOpen]);
 
   const handleWithdraw = async () => {
     if (!address) {
@@ -28,8 +35,8 @@ export default function WithdrawalModal({
     setIsProcessing(true);
     try {
       // Call the withdrawal function from your contract hook
-      if (withdrawFromCampaign) {
-        await withdrawFromCampaign(campaign.id);
+      if (withdrawFunds) {
+        await withdrawFunds(campaign.id);
         onWithdrawalSuccess?.();
         onClose();
       } else {
@@ -45,9 +52,115 @@ export default function WithdrawalModal({
     }
   };
 
-  const raisedAmount = campaign.totalDonated
-    ? parseFloat(ethers.formatUnits(campaign.totalDonated, 6)).toFixed(2)
+  useEffect(() => {
+    if (!isOpen || pricesLoading) return;
+
+    const loadPortfolio = async () => {
+      try {
+        const portfolioData = await calculatePortfolioValue(
+          campaign.id,
+          campaign.goalAmount.toString(),
+          getCampaignTokenBalances,
+        );
+        setPortfolio(portfolioData);
+      } catch (error) {
+        console.error("Withdrawal modal portfolio error:", error);
+        setPortfolio(null);
+      }
+    };
+
+    loadPortfolio();
+  }, [
+    campaign.goalAmount,
+    campaign.id,
+    calculatePortfolioValue,
+    getCampaignTokenBalances,
+    isOpen,
+    pricesLoading,
+  ]);
+
+  const detectDecimals = (goal, donated) => {
+    const candidates = [6, 8, 18];
+    const scores = [];
+
+    for (const dec of candidates) {
+      try {
+        const g = parseFloat(ethers.formatUnits(goal, dec));
+        const d = parseFloat(ethers.formatUnits(donated, dec));
+        let score = 0;
+        if (isFinite(g) && g > 0 && g < 1e7) score++;
+        if (isFinite(d) && d >= 0 && d < 1e9) score++;
+        if (g > 0 && d / Math.max(g, 1) < 1000) score++;
+        scores.push({ dec, score, goalVal: g, donatedVal: d });
+      } catch {
+        scores.push({ dec, score: 0, goalVal: 0, donatedVal: 0 });
+      }
+    }
+
+    scores.sort((a, b) => {
+      if (b.score === a.score)
+        return a.dec - b.dec === 0
+          ? 0
+          : a.dec === 6
+            ? -1
+            : b.dec === 6
+              ? 1
+              : a.dec - b.dec;
+      return b.score - a.score;
+    });
+    return scores[0] || { dec: 6, score: 0, goalVal: 0, donatedVal: 0 };
+  };
+
+  const computeMaxDonatedAcrossCandidates = (donated) => {
+    const candidates = [6, 8, 18];
+    let maxVal = 0;
+    for (const dec of candidates) {
+      try {
+        const v = parseFloat(ethers.formatUnits(donated, dec));
+        if (isFinite(v) && v > maxVal) maxVal = v;
+      } catch {
+        continue;
+      }
+    }
+    return maxVal;
+  };
+
+  const detected = detectDecimals(campaign.goalAmount, campaign.totalDonated);
+  const fallbackRaisedValue = detected.donatedVal;
+
+  const computedGoalUSD = parseFloat(
+    ethers.formatUnits(campaign.goalAmount, 6),
+  );
+
+  let computedRaisedUSD = 0;
+
+  if (portfolio && portfolio.totalUSDValue > 0) {
+    computedRaisedUSD = portfolio.totalUSDValue;
+  } else if (
+    portfolio &&
+    portfolio.totalUSDValue === 0 &&
+    portfolio.tokenBalances.length > 0
+  ) {
+    computedRaisedUSD = fallbackRaisedValue;
+  } else {
+    computedRaisedUSD = fallbackRaisedValue;
+  }
+
+  if (
+    (computedRaisedUSD === 0 || !isFinite(computedRaisedUSD)) &&
+    campaign.totalDonated > 0n
+  ) {
+    const attempted = computeMaxDonatedAcrossCandidates(campaign.totalDonated);
+    if (attempted > 0) {
+      computedRaisedUSD = attempted;
+    }
+  }
+
+  const raisedAmount = Number.isFinite(computedRaisedUSD)
+    ? computedRaisedUSD.toFixed(2)
     : "0.00";
+
+  if (!isOpen) return null;
 
   return (
     <div
@@ -178,6 +291,53 @@ export default function WithdrawalModal({
             </p>
           </div>
 
+          {/* Asset Breakdown Disclaimer */}
+          {portfolio && portfolio.tokenBalances?.length > 0 && (
+            <div
+              className={`rounded-2xl p-4 backdrop-blur-sm border ${
+                darkMode
+                  ? "bg-blue-900/20 border-blue-800/30"
+                  : "bg-blue-50 border-blue-200"
+              }`}
+            >
+              <p
+                className={`text-sm font-semibold mb-2 ${
+                  darkMode ? "text-blue-200" : "text-blue-800"
+                }`}
+              >
+                You will receive these assets (original tokens, not converted):
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {portfolio.tokenBalances.map((token, index) => {
+                  const parsed = parseFloat(token.balanceFormatted);
+                  const amount = Number.isFinite(parsed)
+                    ? parsed.toFixed(4)
+                    : token.balanceFormatted;
+                  return (
+                    <span
+                      key={`${token.symbol}-${index}`}
+                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        darkMode
+                          ? "bg-blue-900/40 text-blue-200"
+                          : "bg-blue-100 text-blue-800"
+                      }`}
+                    >
+                      {amount} {token.symbol}
+                    </span>
+                  );
+                })}
+              </div>
+              <p
+                className={`text-xs mt-3 ${
+                  darkMode ? "text-blue-200/70" : "text-blue-800/80"
+                }`}
+              >
+                Withdrawals transfer the exact token balances held by the
+                campaign contract; USD shown above is a reference value.
+              </p>
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="flex gap-3 pt-4">
             <button
@@ -192,7 +352,7 @@ export default function WithdrawalModal({
               Cancel
             </button>
             <button
-              onClick={handleWithdraw}
+              onClick={() => setShowConfirm(true)}
               disabled={isProcessing}
               className={`flex-1 px-6 py-3 rounded-xl font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
                 darkMode
@@ -214,6 +374,59 @@ export default function WithdrawalModal({
             </button>
           </div>
         </div>
+        {showConfirm && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            onClick={() => !isProcessing && setShowConfirm(false)}
+          >
+            <div className="absolute inset-0 bg-black/50" />
+            <div
+              className={`relative max-w-sm w-full rounded-2xl shadow-xl p-6 border ${
+                darkMode
+                  ? "bg-slate-900 border-slate-700 text-white"
+                  : "bg-white border-gray-200 text-gray-900"
+              }`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-xl font-bold mb-2">Confirm withdrawal</h3>
+              <p className="text-sm mb-4 opacity-80">
+                This action will withdraw all raised funds in their original
+                token forms to your connected wallet. Continue?
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => !isProcessing && setShowConfirm(false)}
+                  disabled={isProcessing}
+                  className={`flex-1 px-4 py-2 rounded-xl font-semibold transition-colors ${
+                    darkMode
+                      ? "bg-gray-800 hover:bg-gray-700 text-white"
+                      : "bg-gray-200 hover:bg-gray-300 text-gray-900"
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowConfirm(false);
+                    handleWithdraw();
+                  }}
+                  disabled={isProcessing}
+                  className={`flex-1 px-4 py-2 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 ${
+                    darkMode
+                      ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white"
+                      : "bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-400 hover:to-indigo-400 text-white"
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  {isProcessing ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <span>Confirm</span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

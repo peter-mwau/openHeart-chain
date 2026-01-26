@@ -25,25 +25,25 @@ export function useTokenConversion() {
 
     const convertToUSD = (amount, tokenAddress, providedTokenConfig = null) => {
         if (!amount) {
-            console.log('⚠️ convertToUSD: No amount provided');
+            // console.log('⚠️ convertToUSD: No amount provided');
             return 0;
         }
 
         if (!prices || Object.keys(prices).length === 0) {
-            console.log('⚠️ convertToUSD: Prices not loaded yet', { prices, pricesLoading });
+            // console.log('⚠️ convertToUSD: Prices not loaded yet', { prices, pricesLoading });
             return 0;
         }
 
         try {
             // Use provided token config if available, otherwise look it up
             const tokenConfig = providedTokenConfig || getTokenConfig(tokenAddress);
-            console.log('🚀 convertToUSD Debug Start:', {
-                tokenAddress,
-                symbol: tokenConfig.symbol,
-                decimals: tokenConfig.decimals,
-                coingeckoId: tokenConfig.coingeckoId,
-                rawAmount: amount.toString()
-            });
+            // console.log('🚀 convertToUSD Debug Start:', {
+            //     tokenAddress,
+            //     symbol: tokenConfig.symbol,
+            //     decimals: tokenConfig.decimals,
+            //     coingeckoId: tokenConfig.coingeckoId,
+            //     rawAmount: amount.toString()
+            // });
 
             const formattedAmount = parseFloat(
                 typeof amount === 'bigint'
@@ -51,17 +51,17 @@ export function useTokenConversion() {
                     : ethers.formatUnits(amount, tokenConfig.decimals)
             );
 
-            console.log('📊 Amount Conversion:', {
-                symbol: tokenConfig.symbol,
-                formattedAmount,
-                calculation: `${amount.toString()} / 10^${tokenConfig.decimals} = ${formattedAmount}`
-            });
+            // console.log('📊 Amount Conversion:', {
+            //     symbol: tokenConfig.symbol,
+            //     formattedAmount,
+            //     calculation: `${amount.toString()} / 10^${tokenConfig.decimals} = ${formattedAmount}`
+            // });
 
             // Debug: Check all available price keys
-            console.log('💰 Available Prices:', Object.keys(prices).map(key => ({
-                key,
-                price: prices[key]?.usd
-            })));
+            // console.log('💰 Available Prices:', Object.keys(prices).map(key => ({
+            //     key,
+            //     price: prices[key]?.usd
+            // })));
 
             let tokenPrice;
 
@@ -115,13 +115,13 @@ export function useTokenConversion() {
             }
 
             const result = formattedAmount * tokenPrice;
-            console.log('✅ Final USD Conversion:', {
-                token: tokenConfig.symbol,
-                amount: formattedAmount,
-                price: tokenPrice,
-                result: result,
-                calculation: `${formattedAmount} ${tokenConfig.symbol} × $${tokenPrice} = $${result}`
-            });
+            // console.log('✅ Final USD Conversion:', {
+            //     token: tokenConfig.symbol,
+            //     amount: formattedAmount,
+            //     price: tokenPrice,
+            //     result: result,
+            //     calculation: `${formattedAmount} ${tokenConfig.symbol} × $${tokenPrice} = $${result}`
+            // });
 
             return result;
 
@@ -154,9 +154,9 @@ export function useTokenConversion() {
                 const tokenAddress = tokenAddresses[i];
                 const balance = balances[i];
 
-                console.log(`\n--- Processing token ${i + 1}/${tokenAddresses.length} ---`);
-                console.log('Token address:', tokenAddress);
-                console.log('Balance:', balance.toString());
+                // console.log(`\n--- Processing token ${i + 1}/${tokenAddresses.length} ---`);
+                // console.log('Token address:', tokenAddress);
+                // console.log('Balance:', balance.toString());
 
                 if (!balance || balance === BigInt(0)) {
                     console.log('⏭️ Skipping token with zero balance');
@@ -212,7 +212,7 @@ export function useTokenConversion() {
 
                 // Pass the resolved tokenConfig to avoid redundant lookups
                 const usdValue = convertToUSD(balance, tokenAddress, tokenConfig);
-                console.log(`💵 Token ${tokenConfig.symbol} USD value: $${usdValue.toFixed(2)}`);
+                // console.log(`💵 Token ${tokenConfig.symbol} USD value: $${usdValue.toFixed(2)}`);
 
                 totalUSDValue += usdValue;
 
@@ -226,19 +226,19 @@ export function useTokenConversion() {
                     usdEquivalent: usdValue.toFixed(6),
                 });
 
-                console.log(`Running total USD: $${totalUSDValue.toFixed(2)}`);
+                // console.log(`Running total USD: $${totalUSDValue.toFixed(2)}`);
             }
 
             // Calculate progress
             const goalUSD = parseFloat(ethers.formatUnits(goalAmount, 6)); // USDC has 6 decimals
             const progress = goalUSD > 0 ? (totalUSDValue / goalUSD) * 100 : 0;
 
-            console.log('\n✅ Portfolio calculation complete:', {
-                totalUSDValue: totalUSDValue.toFixed(2),
-                goalUSD: goalUSD.toFixed(2),
-                progress: progress.toFixed(2) + '%',
-                tokenCount: tokenBalances.length
-            });
+            // console.log('\n✅ Portfolio calculation complete:', {
+            //     totalUSDValue: totalUSDValue.toFixed(2),
+            //     goalUSD: goalUSD.toFixed(2),
+            //     progress: progress.toFixed(2) + '%',
+            //     tokenCount: tokenBalances.length
+            // });
 
             return {
                 totalUSDValue,

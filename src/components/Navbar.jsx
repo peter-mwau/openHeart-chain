@@ -13,7 +13,6 @@ function Navbar({ setCurrentPage, currentPage }) {
     { name: "About", href: "about" },
     { name: "Campaigns", href: "campaignPage" },
     { name: "Manage", href: "manage" },
-    // { name: "How it Works", href: "how-it-works" },
     { name: "Contact", href: "contact" },
   ];
 

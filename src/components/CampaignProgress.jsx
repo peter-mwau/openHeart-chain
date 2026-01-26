@@ -38,7 +38,7 @@ export default function CampaignProgress({
 
       console.log(
         "✅ CampaignProgress: Prices loaded, calculating portfolio...",
-        prices
+        prices,
       );
 
       setLoading(true);
@@ -46,7 +46,7 @@ export default function CampaignProgress({
         const portfolioData = await calculatePortfolioValue(
           campaign.id,
           campaign.goalAmount.toString(),
-          getCampaignTokenBalances
+          getCampaignTokenBalances,
         );
         setPortfolio(portfolioData);
         console.log("✅ CampaignProgress: Loaded portfolio data:", {
@@ -99,10 +99,10 @@ export default function CampaignProgress({
         return a.dec - b.dec === 0
           ? 0
           : a.dec === 6
-          ? -1
-          : b.dec === 6
-          ? 1
-          : a.dec - b.dec;
+            ? -1
+            : b.dec === 6
+              ? 1
+              : a.dec - b.dec;
       return b.score - a.score;
     });
     return scores[0] || { dec: 6, score: 0, goalVal: 0, donatedVal: 0 };
@@ -127,7 +127,7 @@ export default function CampaignProgress({
   };
 
   const computedGoalUSD = parseFloat(
-    ethers.formatUnits(campaign.goalAmount, 6) // Force 6 decimals for USDC goal as per standard
+    ethers.formatUnits(campaign.goalAmount, 6), // Force 6 decimals for USDC goal as per standard
   );
 
   // Use portfolio value if available and valid, otherwise fall back to on-chain USDC data
@@ -136,7 +136,7 @@ export default function CampaignProgress({
   if (portfolio && portfolio.totalUSDValue > 0) {
     // Portfolio calculation succeeded - use the accurate multi-token USD value
     computedRaisedUSD = portfolio.totalUSDValue;
-    console.log("💰 Using portfolio USD value:", computedRaisedUSD);
+    // console.log("💰 Using portfolio USD value:", computedRaisedUSD);
   } else if (
     portfolio &&
     portfolio.totalUSDValue === 0 &&
@@ -145,7 +145,7 @@ export default function CampaignProgress({
     // Portfolio exists but USD value is 0 - might be a pricing issue
     console.warn(
       "⚠️ Portfolio has tokens but USD value is 0. Token balances:",
-      portfolio.tokenBalances
+      portfolio.tokenBalances,
     );
     computedRaisedUSD = fallbackRaisedValue;
   } else {
@@ -179,8 +179,8 @@ export default function CampaignProgress({
         0,
         Math.ceil(
           (Number(campaign.deadline) * 1000 - Date.now()) /
-            (1000 * 60 * 60 * 24)
-        )
+            (1000 * 60 * 60 * 24),
+        ),
       )
     : 0;
 

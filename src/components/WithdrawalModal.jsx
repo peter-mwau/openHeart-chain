@@ -36,7 +36,20 @@ export default function WithdrawalModal({
     try {
       // Call the withdrawal function from your contract hook
       if (withdrawFunds) {
-        await withdrawFunds(campaign.id);
+        const result = await withdrawFunds(campaign.id);
+
+        // Log withdrawal success with token details
+        if (portfolio && portfolio.tokenBalances) {
+          console.log("💰 Withdrawal Details:", {
+            tokensWithdrawn: result.tokensWithdrawn,
+            tokenDetails: portfolio.tokenBalances.map((t) => ({
+              symbol: t.symbol,
+              amount: t.balanceFormatted,
+              usdValue: t.usdValue.toFixed(2),
+            })),
+          });
+        }
+
         onWithdrawalSuccess?.();
         onClose();
       } else {
@@ -301,29 +314,38 @@ export default function WithdrawalModal({
               }`}
             >
               <p
-                className={`text-sm font-semibold mb-2 ${
+                className={`text-sm font-semibold mb-3 ${
                   darkMode ? "text-blue-200" : "text-blue-800"
                 }`}
               >
                 You will receive these assets (original tokens, not converted):
               </p>
-              <div className="flex flex-wrap gap-2">
+              <div className="space-y-2">
                 {portfolio.tokenBalances.map((token, index) => {
                   const parsed = parseFloat(token.balanceFormatted);
                   const amount = Number.isFinite(parsed)
                     ? parsed.toFixed(4)
                     : token.balanceFormatted;
                   return (
-                    <span
+                    <div
                       key={`${token.symbol}-${index}`}
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        darkMode
-                          ? "bg-blue-900/40 text-blue-200"
-                          : "bg-blue-100 text-blue-800"
+                      className={`flex items-center justify-between p-2 rounded-lg ${
+                        darkMode ? "bg-blue-900/40" : "bg-blue-100"
                       }`}
                     >
-                      {amount} {token.symbol}
-                    </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm text-white">
+                          {amount} {token.symbol}
+                        </span>
+                      </div>
+                      <span
+                        className={`text-xs ${
+                          darkMode ? "text-blue-300" : "text-blue-700"
+                        }`}
+                      >
+                        ≈ ${token.usdValue.toFixed(2)}
+                      </span>
+                    </div>
                   );
                 })}
               </div>
@@ -332,8 +354,10 @@ export default function WithdrawalModal({
                   darkMode ? "text-blue-200/70" : "text-blue-800/80"
                 }`}
               >
-                Withdrawals transfer the exact token balances held by the
-                campaign contract; USD shown above is a reference value.
+                📝 Withdrawals transfer the exact token balances held by the
+                campaign contract; all {portfolio.tokenBalances.length} token
+                {portfolio.tokenBalances.length > 1 ? "s" : ""} will be sent in
+                a single batch transaction to save gas.
               </p>
             </div>
           )}
@@ -354,7 +378,7 @@ export default function WithdrawalModal({
             <button
               onClick={() => setShowConfirm(true)}
               disabled={isProcessing}
-              className={`flex-1 px-6 py-3 rounded-xl font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
+              className={`flex-1 px-6 hover:cursor-pointer py-3 rounded-xl font-bold transition-all duration-300 flex items-center justify-center gap-2 ${
                 darkMode
                   ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white disabled:from-purple-900 disabled:to-indigo-900"
                   : "bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-400 hover:to-indigo-400 text-white disabled:from-purple-300 disabled:to-indigo-300"

@@ -95,7 +95,7 @@ export function useContract() {
       const decimals = tokenInfo?.decimals ?? 18;
       const goalAmountWei = ethers.parseUnits(
         campaignData.goalAmount,
-        decimals
+        decimals,
       );
 
       console.log("Creating campaign with data:", {
@@ -268,8 +268,8 @@ export function useContract() {
     }
   };
 
-  // Withdraw funds from campaign
-  const withdrawFunds = async (campaignId, tokenAddress) => {
+  // Withdraw funds from campaign - batches all tokens into a single user operation
+  const withdrawFunds = async (campaignId) => {
     if (!isConnected || !address) {
       toast.error("Please connect your wallet first");
       throw new Error("Wallet not connected");
@@ -281,27 +281,59 @@ export function useContract() {
     }
 
     setIsLoading(true);
-    const toastId = toast.loading("Withdrawing funds...");
+    const toastId = toast.loading("Preparing withdrawal...");
 
     try {
+      // Get all token balances for this campaign
+      const [tokenAddresses, tokenBalances] =
+        await getCampaignTokenBalances(campaignId);
+
+      if (!tokenAddresses || tokenAddresses.length === 0) {
+        throw new Error("No tokens to withdraw");
+      }
+
+      // Filter tokens with non-zero balances
+      const tokensToWithdraw = tokenAddresses.filter(
+        (_, index) => tokenBalances[index] && tokenBalances[index] > 0n,
+      );
+
+      if (tokensToWithdraw.length === 0) {
+        throw new Error("No funds available for withdrawal");
+      }
+
+      console.log(
+        "🏦 Withdrawing from campaign",
+        campaignId,
+        "tokens:",
+        tokensToWithdraw,
+      );
+
       toast.update(toastId, {
-        render: "Confirming withdrawal in your wallet...",
+        render: `Preparing to withdraw ${tokensToWithdraw.length} token(s)...`,
       });
 
-      const transaction = await prepareContractCall({
-        contract,
-        method: "withdrawFunds",
-        params: [tokenAddress, campaignId],
-      });
+      // Send withdrawal transactions one by one
+      for (let i = 0; i < tokensToWithdraw.length; i++) {
+        const tokenAddress = tokensToWithdraw[i];
+        const progress = `(${i + 1}/${tokensToWithdraw.length})`;
+
+        toast.update(toastId, {
+          render: `Withdrawing token ${progress}...`,
+        });
+
+        const transaction = await prepareContractCall({
+          contract,
+          method: "withdrawFunds",
+          params: [tokenAddress, campaignId],
+        });
+
+        await sendTransaction({ transaction, account });
+
+        console.log(`✅ Token ${i + 1}/${tokensToWithdraw.length} withdrawn`);
+      }
 
       toast.update(toastId, {
-        render: "Withdrawal submitted. Waiting for confirmation...",
-      });
-
-      await sendTransaction({ transaction, account });
-
-      toast.update(toastId, {
-        render: "Funds withdrawn successfully! 💰",
+        render: `Funds withdrawn successfully! 💰 (${tokensToWithdraw.length} token${tokensToWithdraw.length > 1 ? "s" : ""})`,
         type: "success",
         isLoading: false,
         autoClose: 5000,
@@ -309,6 +341,7 @@ export function useContract() {
 
       return {
         success: true,
+        tokensWithdrawn: tokensToWithdraw.length,
       };
     } catch (err) {
       console.error("Error withdrawing funds:", err);
@@ -318,6 +351,8 @@ export function useContract() {
         errorMessage = "Transaction was rejected by user";
       } else if (err.reason) {
         errorMessage = err.reason;
+      } else if (err.message) {
+        errorMessage = err.message;
       }
 
       toast.update(toastId, {
@@ -574,7 +609,7 @@ export function useContract() {
       // Try alternative method name if exists
       try {
         console.log(
-          "🔄 Trying alternative method 'hasRole' without readContract wrapper..."
+          "🔄 Trying alternative method 'hasRole' without readContract wrapper...",
         );
         const roleBytes = ethers.keccak256(ethers.toUtf8Bytes(role));
         const result = await contract.hasRole(roleBytes, address);
@@ -692,9 +727,8 @@ export function useContract() {
   const getCampaignDonationsWithTokens = async (campaignId) => {
     try {
       const donations = await getCampaignDonations(campaignId);
-      const [tokenAddresses, tokenBalances] = await getCampaignTokenBalances(
-        campaignId
-      );
+      const [tokenAddresses, tokenBalances] =
+        await getCampaignTokenBalances(campaignId);
 
       console.log("🔍 Token Matching Debug:", {
         campaignId,
@@ -706,7 +740,7 @@ export function useContract() {
       // Validate donations data
       const validDonations = donations.filter(
         (donation) =>
-          donation && donation.amount !== undefined && donation.amount !== null
+          donation && donation.amount !== undefined && donation.amount !== null,
       );
 
       if (validDonations.length !== donations.length) {
@@ -739,35 +773,37 @@ export function useContract() {
           tokenMap[import.meta.env.VITE_USDC_CONTRACT_ADDRESS.toLowerCase()];
 
         // Create a list of potential tokens to check
-        let tokenCandidates = Object.entries(tokenMap).map(([address, info]) => ({
-             address,
-             ...info
-        }));
+        let tokenCandidates = Object.entries(tokenMap).map(
+          ([address, info]) => ({
+            address,
+            ...info,
+          }),
+        );
 
         // Optimization: Sort candidates to prioritize tokens that the campaign actually holds
         // This helps resolve ambiguity (e.g. 100000000 units could be 100 USDC or 1 WBTC)
         // If campaign has WBTC balance but no USDC, it's likely WBTC.
         if (tokenAddresses && tokenBalances) {
-             const balanceMap = new Map();
-             tokenAddresses.forEach((addr, idx) => {
-                 if (tokenBalances[idx] > 0n) {
-                     balanceMap.set(addr.toLowerCase(), true);
-                 }
-             });
+          const balanceMap = new Map();
+          tokenAddresses.forEach((addr, idx) => {
+            if (tokenBalances[idx] > 0n) {
+              balanceMap.set(addr.toLowerCase(), true);
+            }
+          });
 
-             tokenCandidates.sort((a, b) => {
-                 const aHasBalance = balanceMap.has(a.address.toLowerCase());
-                 const bHasBalance = balanceMap.has(b.address.toLowerCase());
-                 if (aHasBalance && !bHasBalance) return -1;
-                 if (!aHasBalance && bHasBalance) return 1;
-                 return 0;
-             });
+          tokenCandidates.sort((a, b) => {
+            const aHasBalance = balanceMap.has(a.address.toLowerCase());
+            const bHasBalance = balanceMap.has(b.address.toLowerCase());
+            if (aHasBalance && !bHasBalance) return -1;
+            if (!aHasBalance && bHasBalance) return 1;
+            return 0;
+          });
         }
 
         // Try to find which token this donation belongs to
         for (const info of tokenCandidates) {
           const formattedAmount = parseFloat(
-            ethers.formatUnits(donation.amount, info.decimals)
+            ethers.formatUnits(donation.amount, info.decimals),
           );
 
           // Simple check: if amount is reasonable for this token type
@@ -776,14 +812,14 @@ export function useContract() {
             console.log(
               `✅ Donation ${index + 1} matched to ${
                 info.symbol
-              }: ${formattedAmount}`
+              }: ${formattedAmount}`,
             );
             break;
           }
         }
 
         const matchedEntry = Object.entries(tokenMap).find(
-          ([, info]) => info.symbol === tokenInfo.symbol
+          ([, info]) => info.symbol === tokenInfo.symbol,
         );
         const selectedAddress = matchedEntry
           ? matchedEntry[0]

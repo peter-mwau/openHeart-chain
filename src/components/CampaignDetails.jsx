@@ -132,7 +132,7 @@ export default function CampaignDetails({ campaign, onBack }) {
 
   return (
     <div
-      className={`h-[75vh] overflow-y-auto rounded-2xl ${
+      className={`h-auto lg:h-[75vh] lg:overflow-y-auto rounded-2xl ${
         darkMode
           ? "bg-gradient-to-b from-slate-900 to-gray-900"
           : "bg-gradient-to-b from-red-50 to-white"
@@ -146,8 +146,8 @@ export default function CampaignDetails({ campaign, onBack }) {
             : "bg-gradient-to-b from-white/95 to-white/80 border-red-200"
         }`}
       >
-        <div className="p-6">
-          <div className="flex items-center justify-between">
+        <div className="p-4 sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center space-x-4">
               <button
                 onClick={onBack}
@@ -171,9 +171,9 @@ export default function CampaignDetails({ campaign, onBack }) {
                   />
                 </svg>
               </button>
-              <div>
+              <div className="min-w-0">
                 <h1
-                  className={`text-3xl font-bold ${
+                  className={`text-2xl sm:text-3xl font-bold ${
                     darkMode ? "text-white" : "text-gray-900"
                   }`}
                 >
@@ -189,11 +189,11 @@ export default function CampaignDetails({ campaign, onBack }) {
                 </p>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-start sm:justify-end">
               {showWithdrawButton && (
                 <button
                   onClick={() => setShowWithdrawalModal(true)}
-                  className={`px-8 py-3 rounded-xl font-bold transition-all duration-300 transform hover:scale-105 relative overflow-hidden ${
+                  className={`w-full sm:w-auto px-6 sm:px-8 py-3 rounded-xl font-bold transition-all duration-300 transform hover:scale-105 relative overflow-hidden ${
                     darkMode
                       ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-lg shadow-purple-900/30"
                       : "bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-400 hover:to-indigo-400 text-white shadow-lg shadow-purple-200"
@@ -209,7 +209,7 @@ export default function CampaignDetails({ campaign, onBack }) {
               {showDonateButton && (
                 <button
                   onClick={() => setShowDonationModal(true)}
-                  className={`px-8 py-3 rounded-xl font-bold transition-all duration-300 transform hover:scale-105 relative overflow-hidden ${
+                  className={`w-full sm:w-auto px-6 sm:px-8 py-3 rounded-xl font-bold transition-all duration-300 transform hover:scale-105 relative overflow-hidden ${
                     darkMode
                       ? "bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 text-white shadow-lg shadow-red-900/30"
                       : "bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-400 hover:to-pink-400 text-white shadow-lg shadow-red-200"
@@ -236,7 +236,7 @@ export default function CampaignDetails({ campaign, onBack }) {
         </div>
 
         {/* Tabs */}
-        <div className="px-6">
+        <div className="px-4 sm:px-6">
           <div className="flex space-x-2 overflow-x-auto pb-2">
             {[
               { key: "overview", label: "Overview", icon: "📊" },
@@ -248,7 +248,7 @@ export default function CampaignDetails({ campaign, onBack }) {
               <button
                 key={key}
                 onClick={() => setActiveTab(key)}
-                className={`flex items-center space-x-2 px-5 py-3 rounded-xl font-medium transition-all mb-3 duration-300 ${
+                className={`flex items-center space-x-2 px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl font-medium transition-all mb-3 duration-300 text-sm sm:text-base ${
                   activeTab === key
                     ? darkMode
                       ? "bg-gradient-to-r from-red-900/40 to-pink-900/40 border border-red-800/40 text-white shadow-lg shadow-red-900/20"
@@ -267,7 +267,7 @@ export default function CampaignDetails({ campaign, onBack }) {
       </div>
 
       {/* Content */}
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {activeTab === "overview" && (
           <div className="space-y-6">
             <CampaignProgress campaign={campaign} />

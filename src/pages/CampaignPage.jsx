@@ -73,9 +73,13 @@ export default function CampaignsExplorerPage() {
               : "bg-gradient-to-br from-white/95 to-red-50/95 border-red-200 shadow-red-100"
           }`}
         >
-          <div className="flex h-[75vh]">
-            {/* Sidebar - Left Panel */}
-            <div className="w-96 border-r min-w-0">
+          <div className="flex flex-col lg:flex-row h-auto lg:h-[75vh]">
+            {/* Sidebar - Top on Mobile, Left on Desktop */}
+            <div
+              className={`w-full lg:w-96 min-w-0 border-b lg:border-b-0 lg:border-r ${
+                darkMode ? "border-red-800/30" : "border-red-200"
+              }`}
+            >
               <div
                 className={`h-full ${
                   darkMode
@@ -83,11 +87,21 @@ export default function CampaignsExplorerPage() {
                     : "bg-gradient-to-b from-white/95 to-red-50/95"
                 }`}
               >
-                <CampaignsSidebar
-                  selectedCampaign={selectedCampaign}
-                  onSelectCampaign={handleSelectCampaign}
-                  darkMode={darkMode}
-                />
+                <div className="lg:hidden">
+                  <CampaignsSidebar
+                    variant="compact"
+                    selectedCampaign={selectedCampaign}
+                    onSelectCampaign={handleSelectCampaign}
+                    darkMode={darkMode}
+                  />
+                </div>
+                <div className="hidden lg:block h-full">
+                  <CampaignsSidebar
+                    selectedCampaign={selectedCampaign}
+                    onSelectCampaign={handleSelectCampaign}
+                    darkMode={darkMode}
+                  />
+                </div>
               </div>
             </div>
 

@@ -8,6 +8,7 @@ export default function CampaignsSidebar({
   selectedCampaign,
   onSelectCampaign,
   darkMode: propDarkMode,
+  variant = "full",
 }) {
   const { campaigns, loading, error, refreshCampaigns } = useCampaigns();
   const [searchTerm, setSearchTerm] = useState("");
@@ -15,6 +16,7 @@ export default function CampaignsSidebar({
   const [portfolioData, setPortfolioData] = useState({}); // Track portfolio values by campaign ID
   const { darkMode: contextDarkMode } = useDarkMode();
   const darkMode = propDarkMode !== undefined ? propDarkMode : contextDarkMode;
+  const isCompact = variant === "compact";
 
   // Filter and search campaigns
   const filteredCampaigns = campaigns.filter((campaign) => {
@@ -181,6 +183,323 @@ export default function CampaignsSidebar({
     );
   }
 
+  const campaignCards = filteredCampaigns.map((campaign) => {
+    const statusColor = getStatusColor(campaign);
+    const statusIcon = getStatusIcon(campaign);
+
+    return (
+      <div
+        key={campaign.id}
+        onClick={() => onSelectCampaign(campaign)}
+        className={`group relative rounded-2xl backdrop-blur-sm border transition-all duration-300 cursor-pointer overflow-hidden ${
+          isCompact ? "min-w-[18rem] snap-start" : ""
+        } ${
+          selectedCampaign?.id === campaign.id
+            ? darkMode
+              ? "border-red-500 shadow-2xl shadow-red-900/30 scale-[1.02]"
+              : "border-red-400 shadow-2xl shadow-red-200 scale-[1.02]"
+            : darkMode
+              ? "border-red-800/30 hover:border-red-700/50 hover:shadow-xl"
+              : "border-red-200 hover:border-red-300 hover:shadow-xl"
+        }`}
+      >
+        {/* Background gradient */}
+        <div
+          className={`absolute inset-0 bg-gradient-to-br ${statusColor} transition-opacity duration-300 ${
+            selectedCampaign?.id === campaign.id ? "opacity-10" : "opacity-5"
+          }`}
+        />
+
+        {/* Selected indicator */}
+        {selectedCampaign?.id === campaign.id && (
+          <div
+            className={`absolute left-0 top-0 bottom-0 w-1 ${
+              darkMode
+                ? "bg-gradient-to-b from-red-500 to-pink-500"
+                : "bg-gradient-to-b from-red-500 to-pink-500"
+            }`}
+          />
+        )}
+
+        <div className={`relative p-4 ${isCompact ? "pb-5" : ""}`}>
+          {/* Header */}
+          <div className="flex items-center justify-between mb-3">
+            <div
+              className={`flex items-center space-x-2 px-3 py-1.5 rounded-full backdrop-blur-sm border ${
+                darkMode
+                  ? "bg-red-900/20 border-red-800/40"
+                  : "bg-red-100/80 border-red-300"
+              }`}
+            >
+              <span className="text-sm">{statusIcon}</span>
+              <span
+                className={`text-xs font-semibold ${
+                  darkMode ? "text-red-300" : "text-red-700"
+                }`}
+              >
+                {campaign.cancelled
+                  ? "Cancelled"
+                  : campaign.withdrawalComplete
+                    ? "Funded"
+                    : !campaign.active ||
+                        Date.now() > Number(campaign.deadline) * 1000
+                      ? "Ended"
+                      : Number(campaign.totalRaised) >=
+                          Number(campaign.goalAmount)
+                        ? "Successful"
+                        : "Active"}
+              </span>
+            </div>
+            <div
+              className={`px-2.5 py-1 rounded-lg ${
+                darkMode
+                  ? "bg-gray-800 text-gray-300"
+                  : "bg-gray-100 text-gray-600"
+              } text-xs font-mono`}
+            >
+              #{campaign.id}
+            </div>
+          </div>
+
+          {/* Campaign Name */}
+          <h3
+            className={`text-lg font-bold mb-2 line-clamp-1 transition-colors duration-300 ${
+              selectedCampaign?.id === campaign.id
+                ? darkMode
+                  ? "text-white"
+                  : "text-gray-900"
+                : darkMode
+                  ? "text-white group-hover:text-red-300"
+                  : "text-gray-900 group-hover:text-red-700"
+            }`}
+          >
+            {campaign.name}
+          </h3>
+
+          {/* Description */}
+          <p
+            className={`text-sm mb-4 leading-relaxed ${
+              isCompact ? "line-clamp-1" : "line-clamp-2"
+            } ${darkMode ? "text-red-300/80" : "text-red-700/80"}`}
+          >
+            {campaign.description || "No description available"}
+          </p>
+
+          {/* Progress */}
+          <CampaignProgress
+            campaign={campaign}
+            compact={true}
+            showDetails={false}
+            className="mb-4"
+            onPortfolioUpdate={(portfolio) =>
+              setPortfolioData((prev) => ({
+                ...prev,
+                [campaign.id]: portfolio,
+              }))
+            }
+          />
+
+          {/* Stats */}
+          <div className="flex justify-between text-sm">
+            <div
+              className={`font-semibold ${
+                darkMode ? "text-white" : "text-gray-900"
+              }`}
+            >
+              $
+              {portfolioData[campaign.id]
+                ? portfolioData[campaign.id].totalUSDValue.toFixed(0)
+                : formatUSDC(campaign.totalRaised)}
+              <span
+                className={`text-xs font-normal ml-1 ${
+                  darkMode ? "text-red-300/60" : "text-red-600/60"
+                }`}
+              >
+                raised
+              </span>
+            </div>
+            <div
+              className={`font-semibold ${
+                darkMode ? "text-white" : "text-gray-900"
+              }`}
+            >
+              ${formatUSDC(campaign.goalAmount)}
+              <span
+                className={`text-xs font-normal ml-1 ${
+                  darkMode ? "text-red-300/60" : "text-red-600/60"
+                }`}
+              >
+                goal
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  });
+
+  if (isCompact) {
+    return (
+      <div className="w-full">
+        <div
+          className={`px-4 pt-4 pb-3 border-b ${
+            darkMode ? "border-red-800/30" : "border-red-200"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div
+                className={`p-2 rounded-xl ${
+                  darkMode
+                    ? "bg-gradient-to-br from-red-900/30 to-pink-900/30"
+                    : "bg-gradient-to-br from-red-100 to-pink-100"
+                }`}
+              >
+                <span className="text-lg">📋</span>
+              </div>
+              <div>
+                <h2
+                  className={`text-lg font-bold ${
+                    darkMode ? "text-white" : "text-gray-900"
+                  }`}
+                >
+                  Campaigns
+                </h2>
+                <p
+                  className={`text-xs ${
+                    darkMode ? "text-red-300" : "text-red-700"
+                  }`}
+                >
+                  Scroll to browse
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={refreshCampaigns}
+              className={`p-2 rounded-xl transition-all duration-300 hover:scale-110 ${
+                darkMode
+                  ? "text-red-400 hover:text-red-300 hover:bg-red-900/30"
+                  : "text-red-600 hover:text-red-700 hover:bg-red-100"
+              }`}
+            >
+              <span className="text-lg">🔄</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="px-4 pt-3">
+          <div className="relative group">
+            <div
+              className={`absolute inset-0 rounded-xl blur transition-all duration-300 group-hover:blur-sm ${
+                darkMode
+                  ? "bg-gradient-to-r from-red-900/20 to-pink-900/20"
+                  : "bg-gradient-to-r from-red-100 to-pink-100"
+              }`}
+            ></div>
+            <div
+              className={`relative rounded-xl border transition-all duration-300 ${
+                darkMode ? "border-red-900/50" : "border-red-200"
+              }`}
+            >
+              <div className="flex items-center px-4">
+                <span
+                  className={`text-lg mr-3 ${
+                    darkMode ? "text-red-400" : "text-red-600"
+                  }`}
+                >
+                  🔍
+                </span>
+                <input
+                  type="text"
+                  placeholder="Search campaigns..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className={`flex-1 py-2.5 bg-transparent focus:outline-none ${
+                    darkMode
+                      ? "text-white placeholder-red-400/50"
+                      : "text-gray-900 placeholder-red-400/50"
+                  }`}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-2 overflow-x-auto py-3">
+            {[
+              { key: "all", label: "All", icon: "🌐" },
+              { key: "active", label: "Active", icon: "🔥" },
+              { key: "successful", label: "Successful", icon: "🎯" },
+              { key: "ended", label: "Ended", icon: "⏰" },
+            ].map(({ key, label, icon }) => (
+              <button
+                key={key}
+                onClick={() => setFilter(key)}
+                className={`flex-shrink-0 px-3 py-2 rounded-lg font-medium transition-all duration-300 ${
+                  filter === key
+                    ? darkMode
+                      ? "bg-gradient-to-r from-red-600 to-pink-600 text-white shadow-lg shadow-red-900/30"
+                      : "bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg shadow-red-200"
+                    : darkMode
+                      ? "bg-red-900/20 text-red-300 hover:bg-red-900/30 border border-red-800/30"
+                      : "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
+                }`}
+              >
+                <div className="flex items-center justify-center space-x-2">
+                  <span className="text-sm">{icon}</span>
+                  <span className="text-xs whitespace-nowrap">{label}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="px-4 pb-4">
+          {filteredCampaigns.length > 0 ? (
+            <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
+              {campaignCards}
+            </div>
+          ) : (
+            <div
+              className={`text-center py-8 rounded-2xl backdrop-blur-sm border ${
+                darkMode
+                  ? "bg-gradient-to-br from-red-900/20 to-pink-900/20 border-red-800/30"
+                  : "bg-gradient-to-br from-red-50 to-pink-50 border-red-200"
+              }`}
+            >
+              <div
+                className={`inline-flex p-3 rounded-2xl mb-4 ${
+                  darkMode
+                    ? "bg-red-900/30 text-red-400"
+                    : "bg-red-100 text-red-600"
+                }`}
+              >
+                <span className="text-3xl">📭</span>
+              </div>
+              <h3
+                className={`text-lg font-bold mb-2 ${
+                  darkMode ? "text-white" : "text-gray-900"
+                }`}
+              >
+                No campaigns found
+              </h3>
+              <p
+                className={`text-sm max-w-xs mx-auto ${
+                  darkMode ? "text-red-300/80" : "text-red-700/80"
+                }`}
+              >
+                {searchTerm
+                  ? `No campaigns match "${searchTerm}"`
+                  : filter !== "all"
+                    ? `No ${filter} campaigns at the moment`
+                    : "No campaigns available"}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
@@ -299,160 +618,7 @@ export default function CampaignsSidebar({
       {/* Campaigns List */}
       <div className="flex-1 overflow-y-auto p-4">
         <div className="space-y-4">
-          {filteredCampaigns.map((campaign) => {
-            const statusColor = getStatusColor(campaign);
-            const statusIcon = getStatusIcon(campaign);
-
-            return (
-              <div
-                key={campaign.id}
-                onClick={() => onSelectCampaign(campaign)}
-                className={`group relative rounded-2xl backdrop-blur-sm border transition-all duration-300 cursor-pointer overflow-hidden ${
-                  selectedCampaign?.id === campaign.id
-                    ? darkMode
-                      ? "border-red-500 shadow-2xl shadow-red-900/30 scale-[1.02]"
-                      : "border-red-400 shadow-2xl shadow-red-200 scale-[1.02]"
-                    : darkMode
-                      ? "border-red-800/30 hover:border-red-700/50 hover:shadow-xl"
-                      : "border-red-200 hover:border-red-300 hover:shadow-xl"
-                }`}
-              >
-                {/* Background gradient */}
-                <div
-                  className={`absolute inset-0 bg-gradient-to-br ${statusColor} transition-opacity duration-300 ${
-                    selectedCampaign?.id === campaign.id
-                      ? "opacity-10"
-                      : "opacity-5"
-                  }`}
-                />
-
-                {/* Selected indicator */}
-                {selectedCampaign?.id === campaign.id && (
-                  <div
-                    className={`absolute left-0 top-0 bottom-0 w-1 ${
-                      darkMode
-                        ? "bg-gradient-to-b from-red-500 to-pink-500"
-                        : "bg-gradient-to-b from-red-500 to-pink-500"
-                    }`}
-                  />
-                )}
-
-                <div className="relative p-4">
-                  {/* Header */}
-                  <div className="flex items-center justify-between mb-3">
-                    <div
-                      className={`flex items-center space-x-2 px-3 py-1.5 rounded-full backdrop-blur-sm border ${
-                        darkMode
-                          ? "bg-red-900/20 border-red-800/40"
-                          : "bg-red-100/80 border-red-300"
-                      }`}
-                    >
-                      <span className="text-sm">{statusIcon}</span>
-                      <span
-                        className={`text-xs font-semibold ${
-                          darkMode ? "text-red-300" : "text-red-700"
-                        }`}
-                      >
-                        {campaign.cancelled
-                          ? "Cancelled"
-                          : campaign.withdrawalComplete
-                            ? "Funded"
-                            : !campaign.active ||
-                                Date.now() > Number(campaign.deadline) * 1000
-                              ? "Ended"
-                              : Number(campaign.totalRaised) >=
-                                  Number(campaign.goalAmount)
-                                ? "Successful"
-                                : "Active"}
-                      </span>
-                    </div>
-                    <div
-                      className={`px-2.5 py-1 rounded-lg ${
-                        darkMode
-                          ? "bg-gray-800 text-gray-300"
-                          : "bg-gray-100 text-gray-600"
-                      } text-xs font-mono`}
-                    >
-                      #{campaign.id}
-                    </div>
-                  </div>
-
-                  {/* Campaign Name */}
-                  <h3
-                    className={`text-lg font-bold mb-2 line-clamp-1 transition-colors duration-300 ${
-                      selectedCampaign?.id === campaign.id
-                        ? darkMode
-                          ? "text-white"
-                          : "text-gray-900"
-                        : darkMode
-                          ? "text-white group-hover:text-red-300"
-                          : "text-gray-900 group-hover:text-red-700"
-                    }`}
-                  >
-                    {campaign.name}
-                  </h3>
-
-                  {/* Description */}
-                  <p
-                    className={`text-sm mb-4 line-clamp-2 leading-relaxed ${
-                      darkMode ? "text-red-300/80" : "text-red-700/80"
-                    }`}
-                  >
-                    {campaign.description || "No description available"}
-                  </p>
-
-                  {/* Progress */}
-                  <CampaignProgress
-                    campaign={campaign}
-                    compact={true}
-                    showDetails={false}
-                    className="mb-4"
-                    onPortfolioUpdate={(portfolio) =>
-                      setPortfolioData((prev) => ({
-                        ...prev,
-                        [campaign.id]: portfolio,
-                      }))
-                    }
-                  />
-
-                  {/* Stats */}
-                  <div className="flex justify-between text-sm">
-                    <div
-                      className={`font-semibold ${
-                        darkMode ? "text-white" : "text-gray-900"
-                      }`}
-                    >
-                      $
-                      {portfolioData[campaign.id]
-                        ? portfolioData[campaign.id].totalUSDValue.toFixed(0)
-                        : formatUSDC(campaign.totalRaised)}
-                      <span
-                        className={`text-xs font-normal ml-1 ${
-                          darkMode ? "text-red-300/60" : "text-red-600/60"
-                        }`}
-                      >
-                        raised
-                      </span>
-                    </div>
-                    <div
-                      className={`font-semibold ${
-                        darkMode ? "text-white" : "text-gray-900"
-                      }`}
-                    >
-                      ${formatUSDC(campaign.goalAmount)}
-                      <span
-                        className={`text-xs font-normal ml-1 ${
-                          darkMode ? "text-red-300/60" : "text-red-600/60"
-                        }`}
-                      >
-                        goal
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {campaignCards}
 
           {filteredCampaigns.length === 0 && (
             <div

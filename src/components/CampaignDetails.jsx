@@ -39,7 +39,7 @@ export default function CampaignDetails({ campaign, onBack }) {
 
   useEffect(() => {
     const fetchDonations = async () => {
-      if (activeTab === "donations") {
+      if (activeTab === "transactions") {
         setIsLoadingDonations(true);
         try {
           // Always use the robust method if available
@@ -60,7 +60,7 @@ export default function CampaignDetails({ campaign, onBack }) {
           }
         } catch (error) {
           console.error("Error fetching donations:", error);
-          toast.error("Failed to load donation history");
+          toast.error("Failed to load transaction history");
         } finally {
           setIsLoadingDonations(false);
         }
@@ -237,12 +237,13 @@ export default function CampaignDetails({ campaign, onBack }) {
 
         {/* Tabs */}
         <div className="px-6">
-          <div className="flex space-x-2">
+          <div className="flex space-x-2 overflow-x-auto pb-2">
             {[
               { key: "overview", label: "Overview", icon: "📊" },
               { key: "portfolio", label: "Portfolio", icon: "💼" },
               { key: "analytics", label: "Analytics", icon: "📈" },
-              { key: "donations", label: "Donations", icon: "💝" },
+              { key: "transactions", label: "Transactions", icon: "📋" },
+              { key: "withdrawal", label: "Withdrawal", icon: "🏦" },
             ].map(({ key, label, icon }) => (
               <button
                 key={key}
@@ -496,7 +497,7 @@ export default function CampaignDetails({ campaign, onBack }) {
           />
         )}
 
-        {activeTab === "donations" && (
+        {activeTab === "transactions" && (
           <div className="space-y-6">
             {isLoadingDonations ? (
               <div className="flex justify-center items-center py-20">
@@ -522,7 +523,7 @@ export default function CampaignDetails({ campaign, onBack }) {
                       darkMode ? "text-red-300" : "text-red-700"
                     }`}
                   >
-                    Loading donation history...
+                    Loading transaction history...
                   </p>
                 </div>
               </div>
@@ -535,21 +536,48 @@ export default function CampaignDetails({ campaign, onBack }) {
                         darkMode ? "text-white" : "text-gray-900"
                       }`}
                     >
-                      Donation History
+                      Transaction History
                     </h3>
                     <p
                       className={`text-sm mt-1 ${
                         darkMode ? "text-red-300" : "text-red-700"
                       }`}
                     >
-                      {campaignDonations?.length || 0} donation
-                      {(campaignDonations?.length || 0) !== 1 ? "s" : ""} •
-                      Real-time updates
+                      {(campaignDonations?.length || 0) +
+                        (campaign.withdrawalComplete ? 1 : 0)}{" "}
+                      transaction
+                      {(campaignDonations?.length || 0) +
+                        (campaign.withdrawalComplete ? 1 : 0) !==
+                      1
+                        ? "s"
+                        : ""}{" "}
+                      • Donations & Withdrawals
                     </p>
                   </div>
+                  <button
+                    onClick={() => {
+                      setIsLoadingDonations(true);
+                      if (getCampaignDonationsWithTokens) {
+                        getCampaignDonationsWithTokens(campaign.id)
+                          .then((enriched) => setCampaignDonations(enriched))
+                          .catch((err) => {
+                            console.error("Error refreshing donations:", err);
+                            toast.error("Failed to refresh transactions");
+                          })
+                          .finally(() => setIsLoadingDonations(false));
+                      }
+                    }}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
+                      darkMode
+                        ? "bg-red-900/30 text-red-300 hover:bg-red-900/50"
+                        : "bg-red-100 text-red-700 hover:bg-red-200"
+                    }`}
+                  >
+                    🔄 Refresh
+                  </button>
                 </div>
 
-                {/* Donation Statistics */}
+                {/* Transaction Statistics */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
                     {
@@ -562,22 +590,23 @@ export default function CampaignDetails({ campaign, onBack }) {
                     },
                     {
                       value: campaignDonations?.length || 0,
-                      label: "Total Donations",
+                      label: "Donations",
                       icon: "💝",
                       color: darkMode
                         ? "from-red-900/30 to-pink-900/30 border-red-800/40"
                         : "from-red-50 to-pink-50 border-red-200",
                     },
                     {
-                      value: `$${(
-                        (portfolio?.raisedUSD || 0) /
-                        Math.max(campaignDonations?.length || 1, 1)
-                      ).toFixed(2)}`,
-                      label: "Avg Donation",
-                      icon: "📊",
-                      color: darkMode
-                        ? "from-purple-900/30 to-indigo-900/30 border-purple-800/40"
-                        : "from-purple-50 to-indigo-50 border-purple-200",
+                      value: campaign.withdrawalComplete ? "✅" : "❌",
+                      label: "Withdrawn",
+                      icon: "🏦",
+                      color: campaign.withdrawalComplete
+                        ? darkMode
+                          ? "from-green-900/30 to-emerald-900/30 border-green-800/40"
+                          : "from-green-50 to-emerald-50 border-green-200"
+                        : darkMode
+                          ? "from-gray-900/30 to-slate-900/30 border-gray-800/40"
+                          : "from-gray-50 to-slate-50 border-gray-200",
                     },
                     {
                       value: new Set(campaignDonations?.map((d) => d.symbol))
@@ -614,7 +643,7 @@ export default function CampaignDetails({ campaign, onBack }) {
                   ))}
                 </div>
 
-                {/* Donations List */}
+                {/* Timeline View */}
                 <div
                   className={`rounded-2xl border overflow-hidden ${
                     darkMode
@@ -623,297 +652,172 @@ export default function CampaignDetails({ campaign, onBack }) {
                   }`}
                 >
                   {campaignDonations && campaignDonations.length > 0 ? (
-                    <div
-                      className="divide-y"
-                      style={{
-                        borderColor: darkMode
-                          ? "rgba(220, 38, 38, 0.2)"
-                          : "rgba(239, 68, 68, 0.2)",
-                      }}
-                    >
-                      {campaignDonations
-                        .sort(
-                          (a, b) => Number(b.timestamp) - Number(a.timestamp),
-                        )
-                        .map((donation, index) => {
-                          const rawAmount = donation?.amount ?? "0";
-                          const decimals =
-                            donation?.decimals ??
-                            getTokenConfig(donation?.tokenAddress)?.decimals ??
-                            18;
-
-                          let formattedAmount = "0";
-                          try {
-                            formattedAmount = ethers.formatUnits(
-                              rawAmount,
-                              decimals,
-                            );
-                          } catch (err) {
-                            formattedAmount = "0";
-                          }
-
-                          const usdValue = convertToUSD(
-                            rawAmount,
-                            donation?.tokenAddress || "",
-                          );
-
-                          return (
-                            <div
-                              key={index}
-                              className={`p-6 transition-all duration-300 hover:scale-[1.005] ${
-                                darkMode
-                                  ? "hover:bg-red-900/20"
-                                  : "hover:bg-red-50/50"
-                              }`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-4">
-                                  <div
-                                    className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                                      darkMode
-                                        ? "bg-gradient-to-br from-red-600 to-pink-600"
-                                        : "bg-gradient-to-br from-red-500 to-pink-500"
-                                    }`}
-                                  >
-                                    <span className="text-white font-bold">
-                                      {donation?.donor
-                                        ?.slice(2, 4)
-                                        .toUpperCase()}
-                                    </span>
-                                  </div>
-                                  <div>
-                                    <div
-                                      className={`font-mono text-sm font-bold ${
-                                        darkMode
-                                          ? "text-white"
-                                          : "text-gray-900"
-                                      }`}
-                                    >
-                                      {donation?.donor?.slice(0, 8)}...
-                                      {donation?.donor?.slice(-6)}
-                                    </div>
-                                    <div
-                                      className={`text-xs ${
-                                        darkMode
-                                          ? "text-red-400/60"
-                                          : "text-red-600/60"
-                                      }`}
-                                    >
-                                      {new Date(
-                                        Number(donation.timestamp) * 1000,
-                                      ).toLocaleDateString("en-US", {
-                                        year: "numeric",
-                                        month: "short",
-                                        day: "numeric",
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                      })}
-                                    </div>
-                                  </div>
+                    <div className="space-y-0">
+                      {/* Withdrawal transaction if completed */}
+                      {campaign.withdrawalComplete &&
+                        campaign.fundsWithdrawnAt && (
+                          <div
+                            className={`p-5 border-b transition-all duration-300 hover:bg-opacity-50 ${
+                              darkMode
+                                ? "border-red-800/20 hover:bg-green-900/10"
+                                : "border-red-200 hover:bg-green-50"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-start space-x-4">
+                                <div
+                                  className={`p-3 rounded-xl mt-1 flex-shrink-0 ${
+                                    darkMode
+                                      ? "bg-green-900/30 text-green-400"
+                                      : "bg-green-100 text-green-600"
+                                  }`}
+                                >
+                                  <span className="text-lg">🏦</span>
                                 </div>
-
-                                <div className="text-right">
+                                <div>
                                   <div
-                                    className={`text-xl font-bold ${
-                                      darkMode
-                                        ? "text-green-400"
-                                        : "text-green-600"
-                                    }`}
-                                  >
-                                    <span className="mr-2">
-                                      {getTokenIcon(donation.symbol)}
-                                    </span>
-                                    +{parseFloat(formattedAmount).toFixed(6)}{" "}
-                                    {donation.symbol}
-                                  </div>
-                                  <div
-                                    className={`text-sm mt-1 ${
-                                      darkMode
-                                        ? "text-green-300"
-                                        : "text-green-700"
-                                    }`}
-                                  >
-                                    ${usdValue.toFixed(2)} USD
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Progress Impact */}
-                              <div className="mt-4">
-                                <div className="flex items-center justify-between text-xs mb-1">
-                                  <span
-                                    className={`${
-                                      darkMode ? "text-red-300" : "text-red-700"
-                                    }`}
-                                  >
-                                    Campaign Impact
-                                  </span>
-                                  <span
-                                    className={`font-medium ${
+                                    className={`font-bold ${
                                       darkMode ? "text-white" : "text-gray-900"
                                     }`}
                                   >
-                                    {usdValue > 0 && portfolio?.goalUSD
-                                      ? (
-                                          (usdValue / portfolio.goalUSD) *
-                                          100
-                                        ).toFixed(4)
-                                      : (
-                                          (Number(donation?.amount ?? 0) /
-                                            Number(campaign.goalAmount)) *
-                                          100
-                                        ).toFixed(4)}
-                                    %
-                                  </span>
+                                    Withdrawal
+                                  </div>
+                                  <div
+                                    className={`text-sm ${
+                                      darkMode
+                                        ? "text-green-300/80"
+                                        : "text-green-700/80"
+                                    }`}
+                                  >
+                                    $
+                                    {parseFloat(
+                                      ethers.formatUnits(
+                                        campaign.amountWithdrawn || 0,
+                                        6,
+                                      ),
+                                    ).toFixed(2)}{" "}
+                                    USDC
+                                  </div>
                                 </div>
+                              </div>
+                              <div className="text-right">
                                 <div
-                                  className={`w-full h-1.5 rounded-full overflow-hidden ${
-                                    darkMode ? "bg-red-900/30" : "bg-red-200"
+                                  className={`text-sm font-medium ${
+                                    darkMode
+                                      ? "text-green-300"
+                                      : "text-green-700"
                                   }`}
                                 >
-                                  <div
-                                    className={`h-full rounded-full bg-gradient-to-r ${
-                                      darkMode
-                                        ? "from-green-500 to-emerald-400"
-                                        : "from-green-500 to-emerald-400"
-                                    }`}
-                                    style={{
-                                      width: `${
-                                        usdValue > 0 && portfolio?.goalUSD
-                                          ? Math.min(
-                                              (usdValue / portfolio.goalUSD) *
-                                                100,
-                                              100,
-                                            )
-                                          : 0
-                                      }%`,
-                                    }}
-                                  ></div>
+                                  {new Date(
+                                    Number(campaign.fundsWithdrawnAt) * 1000,
+                                  ).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                  })}
+                                </div>
+                                <div
+                                  className={`text-xs ${
+                                    darkMode
+                                      ? "text-green-400/60"
+                                      : "text-green-600/60"
+                                  }`}
+                                >
+                                  Completed
                                 </div>
                               </div>
                             </div>
-                          );
-                        })}
-                    </div>
-                  ) : (
-                    <div className="text-center py-16">
-                      <div
-                        className={`inline-flex p-4 rounded-2xl mb-6 ${
-                          darkMode
-                            ? "bg-red-900/30 text-red-400"
-                            : "bg-red-100 text-red-600"
-                        }`}
-                      >
-                        <span className="text-4xl">📭</span>
-                      </div>
-                      <h4
-                        className={`text-2xl font-bold mb-3 ${
-                          darkMode ? "text-white" : "text-gray-900"
-                        }`}
-                      >
-                        No Donations Yet
-                      </h4>
-                      <p
-                        className={`text-lg max-w-md mx-auto ${
-                          darkMode ? "text-red-300" : "text-red-700"
-                        }`}
-                      >
-                        Be the first to support this campaign! Your contribution
-                        will make a difference.
-                      </p>
-                      {isActive && !isExpired && (
-                        <button
-                          onClick={() => setShowDonationModal(true)}
-                          className={`mt-6 px-8 py-3 rounded-xl font-bold transition-all duration-300 ${
+                          </div>
+                        )}
+
+                      {/* Donations */}
+                      {campaignDonations.map((donation, index) => (
+                        <div
+                          key={index}
+                          className={`p-5 border-b last:border-0 transition-all duration-300 hover:bg-opacity-50 ${
                             darkMode
-                              ? "bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 text-white shadow-lg shadow-red-900/30"
-                              : "bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-400 hover:to-pink-400 text-white shadow-lg shadow-red-200"
+                              ? "border-red-800/20 hover:bg-red-900/10"
+                              : "border-red-200 hover:bg-red-50"
                           }`}
                         >
-                          Be the First Donor
-                        </button>
-                      )}
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-start space-x-4 min-w-0">
+                              <div
+                                className={`p-3 rounded-xl mt-1 flex-shrink-0 ${
+                                  darkMode
+                                    ? "bg-red-900/30 text-red-400"
+                                    : "bg-red-100 text-red-600"
+                                }`}
+                              >
+                                <span className="text-lg">💝</span>
+                              </div>
+                              <div className="min-w-0">
+                                <div
+                                  className={`font-bold ${
+                                    darkMode ? "text-white" : "text-gray-900"
+                                  }`}
+                                >
+                                  Donation
+                                </div>
+                                <div
+                                  className={`text-sm ${
+                                    darkMode
+                                      ? "text-red-300/80"
+                                      : "text-red-700/80"
+                                  }`}
+                                >
+                                  {parseFloat(
+                                    ethers.formatUnits(
+                                      donation.amount,
+                                      donation.decimals || 6,
+                                    ),
+                                  ).toFixed(4)}{" "}
+                                  {donation.symbol}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <div
+                                className={`text-sm font-semibold ${
+                                  darkMode ? "text-red-300" : "text-red-700"
+                                }`}
+                              >
+                                {donation.usdValue
+                                  ? `$${donation.usdValue.toFixed(2)}`
+                                  : "—"}
+                              </div>
+                              <div
+                                className={`text-xs ${
+                                  darkMode
+                                    ? "text-red-400/60"
+                                    : "text-red-600/60"
+                                }`}
+                              >
+                                {new Date(
+                                  Number(donation.timestamp) * 1000,
+                                ).toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div
+                      className={`text-center py-16 ${
+                        darkMode ? "text-red-300" : "text-red-700"
+                      }`}
+                    >
+                      <div className="text-4xl mb-4">🎯</div>
+                      <p className="font-medium">No transactions yet</p>
+                      <p className="text-sm mt-1">
+                        Donations will appear here once received
+                      </p>
                     </div>
                   )}
                 </div>
-
-                {/* Recent Activity */}
-                {recentDonations && recentDonations.length > 0 && (
-                  <div
-                    className={`rounded-2xl p-6 backdrop-blur-sm border ${
-                      darkMode
-                        ? "bg-gradient-to-br from-red-900/20 to-pink-900/20 border-red-800/30"
-                        : "bg-gradient-to-br from-red-50 to-pink-50 border-red-200"
-                    }`}
-                  >
-                    <h4
-                      className={`text-xl font-bold mb-6 ${
-                        darkMode ? "text-white" : "text-gray-900"
-                      }`}
-                    >
-                      Recent Activity (Last 24h)
-                    </h4>
-                    <div className="space-y-4">
-                      {recentDonations.map((donation, index) => {
-                        const rawAmount = donation?.amount ?? "0";
-                        const decimals =
-                          donation?.decimals ??
-                          getTokenConfig(donation?.tokenAddress)?.decimals ??
-                          18;
-
-                        let formattedAmount = "0";
-                        try {
-                          formattedAmount = ethers.formatUnits(
-                            rawAmount,
-                            decimals,
-                          );
-                        } catch (err) {
-                          formattedAmount = "0";
-                        }
-
-                        return (
-                          <div
-                            key={index}
-                            className="flex items-center space-x-3"
-                          >
-                            <div
-                              className={`w-3 h-3 rounded-full ${
-                                darkMode ? "bg-green-400" : "bg-green-500"
-                              }`}
-                            ></div>
-                            <div className="flex-1">
-                              <span
-                                className={`text-sm font-medium ${
-                                  darkMode ? "text-white" : "text-gray-900"
-                                }`}
-                              >
-                                New donation from {donation.donor.slice(0, 6)}
-                                ...{donation.donor.slice(-4)}
-                              </span>
-                              <span
-                                className={`text-sm ml-2 ${
-                                  darkMode ? "text-green-400" : "text-green-600"
-                                }`}
-                              >
-                                {parseFloat(formattedAmount).toFixed(6)}{" "}
-                                {donation.symbol}
-                              </span>
-                            </div>
-                            <div
-                              className={`text-xs ${
-                                darkMode ? "text-red-400/60" : "text-red-600/60"
-                              }`}
-                            >
-                              {new Date(
-                                Number(donation.timestamp) * 1000,
-                              ).toLocaleDateString()}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
               </>
             )}
           </div>
@@ -1087,6 +991,377 @@ export default function CampaignDetails({ campaign, onBack }) {
                 </p>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === "withdrawal" && (
+          <div className="space-y-6">
+            {/* Withdrawal Summary */}
+            <div
+              className={`rounded-2xl p-6 backdrop-blur-sm border ${
+                darkMode
+                  ? "bg-gradient-to-br from-purple-900/20 to-indigo-900/20 border-purple-800/30"
+                  : "bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200"
+              }`}
+            >
+              <div className="flex items-center space-x-3 mb-6">
+                <div
+                  className={`p-2.5 rounded-lg flex-shrink-0 ${
+                    darkMode
+                      ? "bg-purple-900/30 text-purple-400"
+                      : "bg-purple-100 text-purple-600"
+                  }`}
+                >
+                  <span className="text-xl">🏦</span>
+                </div>
+                <h3
+                  className={`text-xl font-bold ${
+                    darkMode ? "text-white" : "text-gray-900"
+                  }`}
+                >
+                  Withdrawal Summary
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Total Raised */}
+                <div
+                  className={`p-4 rounded-lg border ${
+                    darkMode
+                      ? "bg-purple-900/10 border-purple-700/30"
+                      : "bg-white/50 border-purple-200"
+                  }`}
+                >
+                  <div
+                    className={`text-xs font-semibold mb-1 uppercase tracking-wide ${
+                      darkMode ? "text-purple-300" : "text-purple-700"
+                    }`}
+                  >
+                    Total Raised
+                  </div>
+                  <div
+                    className={`text-md font-bold truncate ${
+                      darkMode ? "text-white" : "text-gray-900"
+                    }`}
+                  >
+                    $
+                    {portfolio?.raisedUSD
+                      ? portfolio.raisedUSD.toFixed(2)
+                      : parseFloat(
+                          ethers.formatUnits(campaign.totalRaised, 6),
+                        ).toFixed(2)}
+                  </div>
+                  <div
+                    className={`text-xs mt-1 ${
+                      darkMode ? "text-purple-400/60" : "text-purple-600/60"
+                    }`}
+                  >
+                    USD Equivalent
+                  </div>
+                </div>
+
+                {/* Amount Withdrawn */}
+                <div
+                  className={`p-4 rounded-lg border ${
+                    darkMode
+                      ? "bg-green-900/10 border-green-700/30"
+                      : "bg-white/50 border-green-200"
+                  }`}
+                >
+                  <div
+                    className={`text-xs font-semibold mb-1 uppercase tracking-wide ${
+                      darkMode ? "text-green-300" : "text-green-700"
+                    }`}
+                  >
+                    Withdrawn
+                  </div>
+                  <div
+                    className={`text-md font-bold truncate ${
+                      campaign.amountWithdrawn > 0
+                        ? darkMode
+                          ? "text-green-400"
+                          : "text-green-600"
+                        : darkMode
+                          ? "text-gray-400"
+                          : "text-gray-500"
+                    }`}
+                  >
+                    $
+                    {campaign.amountWithdrawn > 0
+                      ? parseFloat(
+                          ethers.formatUnits(campaign.amountWithdrawn, 6),
+                        ).toFixed(2)
+                      : "0.00"}
+                  </div>
+                  <div
+                    className={`text-xs mt-1 ${
+                      darkMode ? "text-green-400/60" : "text-green-600/60"
+                    }`}
+                  >
+                    USDC
+                  </div>
+                </div>
+
+                {/* Current Balance */}
+                <div
+                  className={`p-4 rounded-lg border ${
+                    darkMode
+                      ? "bg-blue-900/10 border-blue-700/30"
+                      : "bg-white/50 border-blue-200"
+                  }`}
+                >
+                  <div
+                    className={`text-xs font-semibold mb-1 uppercase tracking-wide ${
+                      darkMode ? "text-blue-300" : "text-blue-700"
+                    }`}
+                  >
+                    Remaining
+                  </div>
+                  <div
+                    className={`text-md font-bold truncate ${
+                      darkMode ? "text-blue-400" : "text-blue-600"
+                    }`}
+                  >
+                    $
+                    {portfolio?.raisedUSD && campaign.amountWithdrawn > 0
+                      ? (
+                          portfolio.raisedUSD -
+                          parseFloat(
+                            ethers.formatUnits(campaign.amountWithdrawn, 6),
+                          )
+                        ).toFixed(2)
+                      : portfolio?.raisedUSD
+                        ? portfolio.raisedUSD.toFixed(2)
+                        : (
+                            parseFloat(
+                              ethers.formatUnits(campaign.totalRaised, 6),
+                            ) -
+                            parseFloat(
+                              ethers.formatUnits(
+                                campaign.amountWithdrawn || 0,
+                                6,
+                              ),
+                            )
+                          ).toFixed(2)}
+                  </div>
+                  <div
+                    className={`text-xs mt-1 ${
+                      darkMode ? "text-blue-400/60" : "text-blue-600/60"
+                    }`}
+                  >
+                    Not Withdrawn
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Withdrawal Status */}
+            <div
+              className={`rounded-2xl p-6 backdrop-blur-sm border ${
+                darkMode
+                  ? "bg-gradient-to-br from-red-900/20 to-pink-900/20 border-red-800/30"
+                  : "bg-gradient-to-br from-red-50 to-pink-50 border-red-200"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center space-x-3 min-w-0">
+                  <div
+                    className={`p-2.5 rounded-lg flex-shrink-0 ${
+                      campaign.withdrawalComplete
+                        ? darkMode
+                          ? "bg-green-900/30 text-green-400"
+                          : "bg-green-100 text-green-600"
+                        : darkMode
+                          ? "bg-amber-900/30 text-amber-400"
+                          : "bg-amber-100 text-amber-600"
+                    }`}
+                  >
+                    <span className="text-lg">
+                      {campaign.withdrawalComplete ? "✅" : "⏳"}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <h4
+                      className={`font-bold ${
+                        darkMode ? "text-white" : "text-gray-900"
+                      }`}
+                    >
+                      {campaign.withdrawalComplete
+                        ? "Withdrawal Complete"
+                        : "Withdrawal Pending"}
+                    </h4>
+                    <p
+                      className={`text-sm truncate ${
+                        darkMode ? "text-red-300" : "text-red-700"
+                      }`}
+                    >
+                      {campaign.withdrawalComplete && campaign.fundsWithdrawnAt
+                        ? `Withdrawn on ${new Date(
+                            Number(campaign.fundsWithdrawnAt) * 1000,
+                          ).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })}`
+                        : campaign.withdrawalComplete
+                          ? "All available funds have been withdrawn"
+                          : "Waiting for withdrawal transaction"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Token Breakdown */}
+            {portfolio?.tokenBalances && portfolio.tokenBalances.length > 0 && (
+              <div
+                className={`rounded-2xl p-6 backdrop-blur-sm border ${
+                  darkMode
+                    ? "bg-gradient-to-br from-blue-900/20 to-cyan-900/20 border-blue-800/30"
+                    : "bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200"
+                }`}
+              >
+                <div className="flex items-center space-x-3 mb-6">
+                  <div
+                    className={`p-3 rounded-xl ${
+                      darkMode
+                        ? "bg-blue-900/30 text-blue-400"
+                        : "bg-blue-100 text-blue-600"
+                    }`}
+                  >
+                    <span className="text-2xl">💰</span>
+                  </div>
+                  <h4
+                    className={`text-xl font-bold ${
+                      darkMode ? "text-white" : "text-gray-900"
+                    }`}
+                  >
+                    Token Distribution
+                  </h4>
+                </div>
+
+                <div className="space-y-4">
+                  {portfolio.tokenBalances.map((token, index) => (
+                    <div
+                      key={index}
+                      className={`p-4 rounded-xl border ${
+                        darkMode
+                          ? "bg-blue-900/10 border-blue-700/30"
+                          : "bg-white/50 border-blue-200"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div
+                            className={`text-2xl p-2 rounded-lg ${
+                              darkMode ? "bg-blue-900/20" : "bg-blue-100"
+                            }`}
+                          >
+                            {token.symbol === "USDC"
+                              ? "💵"
+                              : token.symbol === "WETH"
+                                ? "🔷"
+                                : token.symbol === "WBTC"
+                                  ? "🟡"
+                                  : "🪙"}
+                          </div>
+                          <div>
+                            <div
+                              className={`font-bold ${
+                                darkMode ? "text-white" : "text-gray-900"
+                              }`}
+                            >
+                              {token.symbol}
+                            </div>
+                            <div
+                              className={`text-sm ${
+                                darkMode
+                                  ? "text-blue-300/60"
+                                  : "text-blue-600/60"
+                              }`}
+                            >
+                              {token.balanceFormatted}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div
+                            className={`font-bold text-lg ${
+                              darkMode ? "text-white" : "text-gray-900"
+                            }`}
+                          >
+                            ${token.usdValue.toFixed(2)}
+                          </div>
+                          <div
+                            className={`text-sm ${
+                              darkMode ? "text-blue-300/60" : "text-blue-600/60"
+                            }`}
+                          >
+                            {(
+                              (token.usdValue / portfolio.totalUSDValue) *
+                              100
+                            ).toFixed(1)}
+                            %
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Info Box */}
+            <div
+              className={`rounded-2xl p-6 backdrop-blur-sm border ${
+                darkMode
+                  ? "bg-gradient-to-br from-gray-900/40 to-slate-900/40 border-gray-800/30"
+                  : "bg-gradient-to-br from-gray-50 to-slate-50 border-gray-200"
+              }`}
+            >
+              <div className="flex items-start space-x-3">
+                <div
+                  className={`p-3 rounded-xl mt-1 flex-shrink-0 ${
+                    darkMode
+                      ? "bg-blue-900/30 text-blue-400"
+                      : "bg-blue-100 text-blue-600"
+                  }`}
+                >
+                  <span className="text-xl">ℹ️</span>
+                </div>
+                <div>
+                  <h4
+                    className={`font-bold mb-2 ${
+                      darkMode ? "text-white" : "text-gray-900"
+                    }`}
+                  >
+                    Withdrawal Information
+                  </h4>
+                  <ul
+                    className={`text-sm space-y-2 ${
+                      darkMode ? "text-gray-400" : "text-gray-600"
+                    }`}
+                  >
+                    <li>
+                      • Withdrawals can only be made after the goal is reached
+                      or deadline passes
+                    </li>
+                    <li>
+                      • All tokens are withdrawn together in a single
+                      transaction
+                    </li>
+                    <li>
+                      • The "Total Raised" amount never changes, even after
+                      withdrawal
+                    </li>
+                    <li>
+                      • Remaining balance shows funds not yet withdrawn from the
+                      contract
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

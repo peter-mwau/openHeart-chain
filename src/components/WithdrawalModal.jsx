@@ -334,7 +334,11 @@ export default function WithdrawalModal({
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm text-white">
+                        <span
+                          className={`font-semibold text-sm ${
+                            darkMode ? "text-white" : "text-gray-900"
+                          }`}
+                        >
                           {amount} {token.symbol}
                         </span>
                       </div>

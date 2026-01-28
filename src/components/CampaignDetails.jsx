@@ -244,6 +244,7 @@ export default function CampaignDetails({ campaign, onBack }) {
               { key: "analytics", label: "Analytics", icon: "📈" },
               { key: "transactions", label: "Transactions", icon: "📋" },
               { key: "withdrawal", label: "Withdrawal", icon: "🏦" },
+              { key: "accountability", label: "Accountability", icon: "📸" },
             ].map(({ key, label, icon }) => (
               <button
                 key={key}
@@ -773,6 +774,18 @@ export default function CampaignDetails({ campaign, onBack }) {
                                   ).toFixed(4)}{" "}
                                   {donation.symbol}
                                 </div>
+                                {donation.donor && (
+                                  <div
+                                    className={`text-xs font-mono mt-1 ${
+                                      darkMode
+                                        ? "text-red-400/60"
+                                        : "text-red-600/60"
+                                    }`}
+                                  >
+                                    From: {donation.donor.slice(0, 6)}...
+                                    {donation.donor.slice(-4)}
+                                  </div>
+                                )}
                               </div>
                             </div>
                             <div className="text-right flex-shrink-0">
@@ -1361,6 +1374,130 @@ export default function CampaignDetails({ campaign, onBack }) {
                   </ul>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "accountability" && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3
+                  className={`text-2xl font-bold ${
+                    darkMode ? "text-white" : "text-gray-900"
+                  }`}
+                >
+                  Campaign Accountability
+                </h3>
+                <p
+                  className={`text-sm mt-1 ${
+                    darkMode ? "text-red-300" : "text-red-700"
+                  }`}
+                >
+                  Evidence and documentation of fund usage
+                </p>
+              </div>
+            </div>
+
+            {/* Coming Soon Card */}
+            <div
+              className={`rounded-2xl p-12 backdrop-blur-sm border text-center ${
+                darkMode
+                  ? "bg-gradient-to-br from-purple-900/20 to-indigo-900/20 border-purple-800/30"
+                  : "bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200"
+              }`}
+            >
+              <div
+                className={`inline-flex p-6 rounded-3xl mb-6 ${
+                  darkMode
+                    ? "bg-gradient-to-br from-purple-900/30 to-indigo-900/30"
+                    : "bg-gradient-to-br from-purple-100 to-indigo-100"
+                }`}
+              >
+                <span className="text-6xl">📸</span>
+              </div>
+              <h2
+                className={`text-4xl font-bold mb-6 ${
+                  darkMode ? "text-white" : "text-gray-900"
+                }`}
+              >
+                Coming Soon
+              </h2>
+              <p
+                className={`text-xl leading-relaxed mb-8 max-w-2xl mx-auto ${
+                  darkMode ? "text-purple-300" : "text-purple-700"
+                }`}
+              >
+                Campaign owners will be able to upload evidence documenting how
+                donated funds were used - including receipts, photos, reports,
+                and other accountability materials.
+              </p>
+
+              {/* Feature Preview */}
+              <div
+                className={`rounded-2xl p-6 backdrop-blur-sm border mt-8 ${
+                  darkMode
+                    ? "bg-gradient-to-br from-blue-900/20 to-cyan-900/20 border-blue-800/30"
+                    : "bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200"
+                }`}
+              >
+                <div className="flex items-start space-x-3">
+                  <span
+                    className={`text-2xl ${
+                      darkMode ? "text-blue-400" : "text-blue-600"
+                    }`}
+                  >
+                    ✨
+                  </span>
+                  <div className="text-left">
+                    <h4
+                      className={`text-lg font-bold mb-3 ${
+                        darkMode ? "text-white" : "text-gray-900"
+                      }`}
+                    >
+                      Upcoming Features
+                    </h4>
+                    <ul
+                      className={`text-sm space-y-2 ${
+                        darkMode ? "text-blue-300/80" : "text-blue-700/80"
+                      }`}
+                    >
+                      <li>
+                        • Upload receipts and invoices as proof of purchases
+                      </li>
+                      <li>
+                        • Share photos and videos showing funded project
+                        progress
+                      </li>
+                      <li>• Add detailed reports explaining fund allocation</li>
+                      <li>
+                        • Timestamp and blockchain verification of documentation
+                      </li>
+                      <li>
+                        • Public transparency dashboard for all stakeholders
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {isOwner && (
+                <div
+                  className={`mt-8 p-4 rounded-xl backdrop-blur-sm border ${
+                    darkMode
+                      ? "bg-purple-900/20 border-purple-700/30 text-purple-300"
+                      : "bg-purple-100/80 border-purple-300 text-purple-700"
+                  }`}
+                >
+                  <div className="flex items-center justify-center space-x-2">
+                    <span className="text-lg">👤</span>
+                    <span className="text-sm font-medium">
+                      As the campaign owner, you'll be able to manage
+                      accountability documentation once this feature launches
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

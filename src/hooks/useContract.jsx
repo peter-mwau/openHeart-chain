@@ -13,6 +13,7 @@ import {
 } from "thirdweb";
 import { useActiveAccount } from "thirdweb/react";
 import { client } from "../services/client";
+import { useTokenConversion } from "./useTokenConversion";
 
 const donorContractABI = DonorContractABI.abi;
 const DONOR_CONTRACT_ADDRESS =
@@ -23,6 +24,7 @@ export function useContract() {
   const account = useActiveAccount();
   const address = account?.address || "";
   const isConnected = !!account;
+  const { convertToUSD } = useTokenConversion();
 
   /// Contract should be created once
   const contract = useMemo(() => {
@@ -726,28 +728,14 @@ export function useContract() {
 
   const getCampaignDonationsWithTokens = async (campaignId) => {
     try {
-      const donations = await getCampaignDonations(campaignId);
-      const [tokenAddresses, tokenBalances] =
-        await getCampaignTokenBalances(campaignId);
-
-      console.log("🔍 Token Matching Debug:", {
+      console.log(
+        "🔍 Fetching donations from DonationMade events for campaign:",
         campaignId,
-        donationsCount: donations.length,
-        tokenAddresses,
-        tokenBalances: tokenBalances.map((b) => b?.toString() || "null"),
-      });
-
-      // Validate donations data
-      const validDonations = donations.filter(
-        (donation) =>
-          donation && donation.amount !== undefined && donation.amount !== null,
       );
 
-      if (validDonations.length !== donations.length) {
-        console.warn("⚠️ Filtered out invalid donations:", {
-          original: donations.length,
-          valid: validDonations.length,
-        });
+      if (!contract) {
+        console.error("❌ Contract not initialized");
+        return [];
       }
 
       // Create token map from environment variables
@@ -766,79 +754,86 @@ export function useContract() {
         },
       };
 
-      // Map donations to tokens
-      const donationsWithTokens = validDonations.map((donation, index) => {
-        // Default to USDC as fallback
-        let tokenInfo =
-          tokenMap[import.meta.env.VITE_USDC_CONTRACT_ADDRESS.toLowerCase()];
+      // Get a provider from the contract
+      const provider = new ethers.JsonRpcProvider(
+        import.meta.env.VITE_RPC_URL || "https://rpc.sepolia.org",
+      );
 
-        // Create a list of potential tokens to check
-        let tokenCandidates = Object.entries(tokenMap).map(
-          ([address, info]) => ({
-            address,
-            ...info,
-          }),
-        );
+      const contractInterface = new ethers.Contract(
+        DONOR_CONTRACT_ADDRESS,
+        donorContractABI,
+        provider,
+      );
 
-        // Optimization: Sort candidates to prioritize tokens that the campaign actually holds
-        // This helps resolve ambiguity (e.g. 100000000 units could be 100 USDC or 1 WBTC)
-        // If campaign has WBTC balance but no USDC, it's likely WBTC.
-        if (tokenAddresses && tokenBalances) {
-          const balanceMap = new Map();
-          tokenAddresses.forEach((addr, idx) => {
-            if (tokenBalances[idx] > 0n) {
-              balanceMap.set(addr.toLowerCase(), true);
-            }
-          });
+      // Filter for DonationMade events for this specific campaign
+      // DonationMade(uint256 indexed campaignId, address indexed donor, address token, uint256 amount)
+      const filter = contractInterface.filters.DonationMade(campaignId);
 
-          tokenCandidates.sort((a, b) => {
-            const aHasBalance = balanceMap.has(a.address.toLowerCase());
-            const bHasBalance = balanceMap.has(b.address.toLowerCase());
-            if (aHasBalance && !bHasBalance) return -1;
-            if (!aHasBalance && bHasBalance) return 1;
-            return 0;
-          });
-        }
+      // Get events from the last 10000 blocks (adjust as needed)
+      const currentBlock = await provider.getBlockNumber();
+      const fromBlock = Math.max(0, currentBlock - 10000);
 
-        // Try to find which token this donation belongs to
-        for (const info of tokenCandidates) {
-          const formattedAmount = parseFloat(
-            ethers.formatUnits(donation.amount, info.decimals),
-          );
+      console.log(
+        `📡 Querying events from block ${fromBlock} to ${currentBlock}`,
+      );
 
-          // Simple check: if amount is reasonable for this token type
-          if (isReasonableAmount(formattedAmount, info.symbol)) {
-            tokenInfo = info;
-            console.log(
-              `✅ Donation ${index + 1} matched to ${
-                info.symbol
-              }: ${formattedAmount}`,
-            );
-            break;
-          }
-        }
+      const events = await contractInterface.queryFilter(
+        filter,
+        fromBlock,
+        currentBlock,
+      );
 
-        const matchedEntry = Object.entries(tokenMap).find(
-          ([, info]) => info.symbol === tokenInfo.symbol,
-        );
-        const selectedAddress = matchedEntry
-          ? matchedEntry[0]
-          : import.meta.env.VITE_USDC_CONTRACT_ADDRESS;
+      console.log(`✅ Found ${events.length} donation events`);
 
-        return {
-          ...donation,
-          tokenAddress: selectedAddress,
-          symbol: tokenInfo.symbol,
-          decimals: tokenInfo.decimals,
-        };
-      });
+      // Parse events into donation objects with accurate token information
+      const donationsWithTokens = await Promise.all(
+        events.map(async (event) => {
+          const { donor, token, amount } = event.args;
+          const block = await event.getBlock();
+          const timestamp = block.timestamp;
 
-      console.log("🎯 Final mapped donations:", donationsWithTokens);
+          // Get token info from our map
+          const tokenInfo = tokenMap[token.toLowerCase()] || {
+            symbol: "UNKNOWN",
+            decimals: 18,
+          };
+
+          // Calculate USD value
+          const usdValue = convertToUSD(amount, token, tokenInfo);
+
+          return {
+            donor,
+            amount,
+            timestamp: BigInt(timestamp),
+            tokenAddress: token,
+            symbol: tokenInfo.symbol,
+            decimals: tokenInfo.decimals,
+            usdValue,
+            transactionHash: event.transactionHash,
+          };
+        }),
+      );
+
+      console.log("🎯 Parsed donations with token info:", donationsWithTokens);
       return donationsWithTokens;
     } catch (error) {
       console.error("❌ Error in getCampaignDonationsWithTokens:", error);
-      // Return empty array as fallback
-      return [];
+      // Fallback to old method if events fail
+      try {
+        console.log("🔄 Falling back to getCampaignDonations method");
+        const donations = await getCampaignDonations(campaignId);
+
+        // Return with USDC as default (better than nothing)
+        return donations.map((donation) => ({
+          ...donation,
+          tokenAddress: import.meta.env.VITE_USDC_CONTRACT_ADDRESS,
+          symbol: "USDC",
+          decimals: 6,
+        }));
+      } catch (fallbackError) {
+        console.error("❌ Fallback also failed:", fallbackError);
+        return [];
+      }
     }
   };
 

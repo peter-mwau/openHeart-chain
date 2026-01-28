@@ -109,7 +109,8 @@ export default function CampaignDetails({ campaign, onBack }) {
       (Number(campaign?.deadline) * 1000 - Date.now()) / (1000 * 60 * 60 * 24),
     ),
   );
-  const isActive = campaign.active && !campaign.cancelled && !campaign.funded;
+  const isActive =
+    campaign.active && !campaign.cancelled && !campaign.withdrawalComplete;
   const isExpired = Date.now() > Number(campaign.deadline) * 1000;
   const isOwner =
     address &&
@@ -339,7 +340,7 @@ export default function CampaignDetails({ campaign, onBack }) {
                       label: "Status",
                       value: campaign.cancelled
                         ? "Cancelled"
-                        : campaign.funded
+                        : campaign.withdrawalComplete
                           ? "Funded"
                           : isExpired
                             ? "Ended"
@@ -347,14 +348,14 @@ export default function CampaignDetails({ campaign, onBack }) {
                       color: darkMode
                         ? campaign.cancelled
                           ? "text-red-400"
-                          : campaign.funded
+                          : campaign.withdrawalComplete
                             ? "text-green-400"
                             : isExpired
                               ? "text-gray-400"
                               : "text-blue-400"
                         : campaign.cancelled
                           ? "text-red-600"
-                          : campaign.funded
+                          : campaign.withdrawalComplete
                             ? "text-green-600"
                             : isExpired
                               ? "text-gray-600"
@@ -387,7 +388,7 @@ export default function CampaignDetails({ campaign, onBack }) {
                       value: portfolio?.raisedUSD
                         ? `$${portfolio.raisedUSD.toFixed(2)} (USD equiv)`
                         : `${parseFloat(
-                            ethers.formatUnits(campaign.totalDonated, 6),
+                            ethers.formatUnits(campaign.totalRaised, 6),
                           ).toFixed(2)} USDC`,
                       color: darkMode ? "text-green-300" : "text-green-700",
                     },

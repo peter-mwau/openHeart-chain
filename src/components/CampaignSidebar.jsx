@@ -26,21 +26,24 @@ export default function CampaignsSidebar({
     const deadlineMs = Number(campaign.deadline) * 1000;
     const isExpired = Date.now() > deadlineMs;
     const isSuccessful =
-      Number(campaign.totalDonated) >= Number(campaign.goalAmount);
+      Number(campaign.totalRaised) >= Number(campaign.goalAmount);
 
     const matchesFilter =
       filter === "all"
         ? true
         : filter === "active"
-        ? campaign.active &&
-          !campaign.cancelled &&
-          !campaign.funded &&
-          !isExpired
-        : filter === "successful"
-        ? isSuccessful && campaign.active
-        : filter === "ended"
-        ? !campaign.active || campaign.cancelled || campaign.funded || isExpired
-        : true;
+          ? campaign.active &&
+            !campaign.cancelled &&
+            !campaign.withdrawalComplete &&
+            !isExpired
+          : filter === "successful"
+            ? isSuccessful && campaign.active
+            : filter === "ended"
+              ? !campaign.active ||
+                campaign.cancelled ||
+                campaign.withdrawalComplete ||
+                isExpired
+              : true;
 
     return matchesSearch && matchesFilter;
   });
@@ -58,11 +61,11 @@ export default function CampaignsSidebar({
     const deadlineMs = Number(campaign.deadline) * 1000;
     const isExpired = Date.now() > deadlineMs;
     const isSuccessful =
-      Number(campaign.totalDonated) >= Number(campaign.goalAmount);
+      Number(campaign.totalRaised) >= Number(campaign.goalAmount);
 
     if (campaign.cancelled)
       return darkMode ? "from-red-700 to-red-800" : "from-red-500 to-red-600";
-    if (campaign.funded)
+    if (campaign.withdrawalComplete)
       return darkMode
         ? "from-green-700 to-green-800"
         : "from-green-500 to-green-600";
@@ -82,10 +85,10 @@ export default function CampaignsSidebar({
     const deadlineMs = Number(campaign.deadline) * 1000;
     const isExpired = Date.now() > deadlineMs;
     const isSuccessful =
-      Number(campaign.totalDonated) >= Number(campaign.goalAmount);
+      Number(campaign.totalRaised) >= Number(campaign.goalAmount);
 
     if (campaign.cancelled) return "✖️";
-    if (campaign.funded) return "✅";
+    if (campaign.withdrawalComplete) return "✅";
     if (!campaign.active || isExpired) return "⏰";
     if (isSuccessful) return "🎯";
     return "🔥";
@@ -280,8 +283,8 @@ export default function CampaignsSidebar({
                     ? "bg-gradient-to-r from-red-600 to-pink-600 text-white shadow-lg shadow-red-900/30"
                     : "bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg shadow-red-200"
                   : darkMode
-                  ? "bg-red-900/20 text-red-300 hover:bg-red-900/30 border border-red-800/30"
-                  : "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
+                    ? "bg-red-900/20 text-red-300 hover:bg-red-900/30 border border-red-800/30"
+                    : "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
               }`}
             >
               <div className="flex items-center justify-center space-x-2">
@@ -310,8 +313,8 @@ export default function CampaignsSidebar({
                       ? "border-red-500 shadow-2xl shadow-red-900/30 scale-[1.02]"
                       : "border-red-400 shadow-2xl shadow-red-200 scale-[1.02]"
                     : darkMode
-                    ? "border-red-800/30 hover:border-red-700/50 hover:shadow-xl"
-                    : "border-red-200 hover:border-red-300 hover:shadow-xl"
+                      ? "border-red-800/30 hover:border-red-700/50 hover:shadow-xl"
+                      : "border-red-200 hover:border-red-300 hover:shadow-xl"
                 }`}
               >
                 {/* Background gradient */}
@@ -352,15 +355,15 @@ export default function CampaignsSidebar({
                       >
                         {campaign.cancelled
                           ? "Cancelled"
-                          : campaign.funded
-                          ? "Funded"
-                          : !campaign.active ||
-                            Date.now() > Number(campaign.deadline) * 1000
-                          ? "Ended"
-                          : Number(campaign.totalDonated) >=
-                            Number(campaign.goalAmount)
-                          ? "Successful"
-                          : "Active"}
+                          : campaign.withdrawalComplete
+                            ? "Funded"
+                            : !campaign.active ||
+                                Date.now() > Number(campaign.deadline) * 1000
+                              ? "Ended"
+                              : Number(campaign.totalRaised) >=
+                                  Number(campaign.goalAmount)
+                                ? "Successful"
+                                : "Active"}
                       </span>
                     </div>
                     <div
@@ -382,8 +385,8 @@ export default function CampaignsSidebar({
                           ? "text-white"
                           : "text-gray-900"
                         : darkMode
-                        ? "text-white group-hover:text-red-300"
-                        : "text-gray-900 group-hover:text-red-700"
+                          ? "text-white group-hover:text-red-300"
+                          : "text-gray-900 group-hover:text-red-700"
                     }`}
                   >
                     {campaign.name}
@@ -422,7 +425,7 @@ export default function CampaignsSidebar({
                       $
                       {portfolioData[campaign.id]
                         ? portfolioData[campaign.id].totalUSDValue.toFixed(0)
-                        : formatUSDC(campaign.totalDonated)}
+                        : formatUSDC(campaign.totalRaised)}
                       <span
                         className={`text-xs font-normal ml-1 ${
                           darkMode ? "text-red-300/60" : "text-red-600/60"
@@ -483,8 +486,8 @@ export default function CampaignsSidebar({
                 {searchTerm
                   ? `No campaigns match "${searchTerm}"`
                   : filter !== "all"
-                  ? `No ${filter} campaigns at the moment`
-                  : "No campaigns available"}
+                    ? `No ${filter} campaigns at the moment`
+                    : "No campaigns available"}
               </p>
               {(searchTerm || filter !== "all") && (
                 <button
@@ -530,8 +533,8 @@ export default function CampaignsSidebar({
               {searchTerm
                 ? "Search results"
                 : filter === "all"
-                ? "Total"
-                : filter + " campaigns"}
+                  ? "Total"
+                  : filter + " campaigns"}
             </div>
           </div>
           <div

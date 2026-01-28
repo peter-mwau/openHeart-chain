@@ -12,7 +12,7 @@ export default function CampaignsGrid({ onViewDetails, onDonate }) {
 
   // Sort campaigns by creation date (newest first) for stacking
   const sortedCampaigns = [...campaigns].sort(
-    (a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0)
+    (a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0),
   );
 
   // Filter campaigns based on selected filter
@@ -20,21 +20,24 @@ export default function CampaignsGrid({ onViewDetails, onDonate }) {
     const deadlineMs = Number(campaign.deadline) * 1000;
     const isExpired = Date.now() > deadlineMs;
     const isSuccessful =
-      Number(campaign.totalDonated) >= Number(campaign.goalAmount);
+      Number(campaign.totalRaised) >= Number(campaign.goalAmount);
 
     switch (filter) {
       case "active":
         return (
           campaign.active &&
           !campaign.cancelled &&
-          !campaign.funded &&
+          !campaign.withdrawalComplete &&
           !isExpired
         );
       case "successful":
         return isSuccessful && campaign.active;
       case "ended":
         return (
-          !campaign.active || campaign.cancelled || campaign.funded || isExpired
+          !campaign.active ||
+          campaign.cancelled ||
+          campaign.withdrawalComplete ||
+          isExpired
         );
       default:
         return true;
@@ -316,8 +319,8 @@ export default function CampaignsGrid({ onViewDetails, onDonate }) {
                             filterOption.color
                           }-200`
                       : darkMode
-                      ? `bg-red-900/20 text-red-300 hover:bg-red-900/30 border border-red-800/30`
-                      : `bg-red-50 text-red-600 hover:bg-red-100 border border-red-200`
+                        ? `bg-red-900/20 text-red-300 hover:bg-red-900/30 border border-red-800/30`
+                        : `bg-red-50 text-red-600 hover:bg-red-100 border border-red-200`
                   }`}
                 >
                   {filterOption.label}

@@ -27,13 +27,15 @@ export function CampaignsProvider({ children }) {
         description: rawCampaign[2], // description
         creator: rawCampaign[3], // creator
         goalAmount: rawCampaign[4], // goalAmount
-        totalDonated: rawCampaign[5], // totalDonated
-        createdAt: rawCampaign[6], // createdAt
-        deadline: rawCampaign[7], // deadline
-        active: rawCampaign[8], // active
-        exists: rawCampaign[9], // exists
-        funded: rawCampaign[10], // funded
-        cancelled: rawCampaign[11], // cancelled
+        totalRaised: rawCampaign[5], // totalRaised (formerly totalDonated)
+        amountWithdrawn: rawCampaign[6], // amountWithdrawn
+        createdAt: rawCampaign[7], // createdAt
+        deadline: rawCampaign[8], // deadline
+        active: rawCampaign[9], // active
+        exists: rawCampaign[10], // exists
+        withdrawalComplete: rawCampaign[11], // withdrawalComplete (formerly funded)
+        cancelled: rawCampaign[12], // cancelled
+        fundsWithdrawnAt: rawCampaign[13], // fundsWithdrawnAt
       };
     }
 
@@ -43,7 +45,7 @@ export function CampaignsProvider({ children }) {
       // (comment out or remove in production)
       console.debug(
         "transformCampaign - object keys:",
-        Object.keys(rawCampaign)
+        Object.keys(rawCampaign),
       );
 
       return {
@@ -52,7 +54,7 @@ export function CampaignsProvider({ children }) {
             rawCampaign._id ??
             rawCampaign.identifier ??
             rawCampaign.index ??
-            NaN
+            NaN,
         ),
         name: rawCampaign.name ?? rawCampaign.title ?? "",
         description: rawCampaign.description ?? rawCampaign.details ?? "",
@@ -63,17 +65,21 @@ export function CampaignsProvider({ children }) {
           "",
         goalAmount:
           rawCampaign.goalAmount ?? rawCampaign.goal ?? rawCampaign.target ?? 0,
-        totalDonated:
+        totalRaised:
+          rawCampaign.totalRaised ??
           rawCampaign.totalDonated ??
           rawCampaign.raised ??
           rawCampaign.collected ??
           0,
+        amountWithdrawn: rawCampaign.amountWithdrawn ?? 0,
         createdAt: rawCampaign.createdAt ?? rawCampaign.timestamp ?? null,
         deadline: rawCampaign.deadline ?? rawCampaign.endsAt ?? null,
         active: rawCampaign.active ?? true,
         exists: rawCampaign.exists ?? true,
-        funded: rawCampaign.funded ?? false,
+        withdrawalComplete:
+          rawCampaign.withdrawalComplete ?? rawCampaign.funded ?? false,
         cancelled: rawCampaign.cancelled ?? false,
+        fundsWithdrawnAt: rawCampaign.fundsWithdrawnAt ?? 0,
       };
     }
 
@@ -84,13 +90,15 @@ export function CampaignsProvider({ children }) {
       description: undefined,
       creator: undefined,
       goalAmount: 0,
-      totalDonated: 0,
+      totalRaised: 0,
+      amountWithdrawn: 0,
       createdAt: null,
       deadline: null,
       active: false,
       exists: false,
-      funded: false,
+      withdrawalComplete: false,
       cancelled: false,
+      fundsWithdrawnAt: 0,
     };
   };
 
@@ -116,7 +124,7 @@ export function CampaignsProvider({ children }) {
             const portfolio = await calculatePortfolioValue(
               c.id,
               c.goalAmount.toString(),
-              getCampaignTokenBalances
+              getCampaignTokenBalances,
             );
 
             return {
@@ -131,11 +139,11 @@ export function CampaignsProvider({ children }) {
             console.error(
               "Portfolio enrichment failed for campaign",
               c.id,
-              error
+              error,
             );
             return c;
           }
-        })
+        }),
       );
 
       console.log("Processed campaigns:", enrichedCampaigns); // For debugging

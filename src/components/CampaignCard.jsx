@@ -30,18 +30,19 @@ export default function CampaignCard({
   };
 
   // Check if campaign is active
-  const isActive = campaign.active && !campaign.cancelled && !campaign.funded;
+  const isActive =
+    campaign.active && !campaign.cancelled && !campaign.withdrawalComplete;
   const isExpired = Date.now() > Number(campaign.deadline) * 1000;
 
   // Calculate progress percentage using portfolio data if available
   const progress = portfolioData
     ? portfolioData.progress
-    : Number(campaign.totalDonated) > 0
-    ? Math.min(
-        (Number(campaign.totalDonated) / Number(campaign.goalAmount)) * 100,
-        100
-      )
-    : 0;
+    : Number(campaign.totalRaised) > 0
+      ? Math.min(
+          (Number(campaign.totalRaised) / Number(campaign.goalAmount)) * 100,
+          100,
+        )
+      : 0;
 
   // Check if goal is achieved using portfolio data
   const isSuccessful = progress >= 100;
@@ -49,7 +50,7 @@ export default function CampaignCard({
   // Get raised amount - use portfolio value if available
   const raisedAmount = portfolioData
     ? portfolioData.totalUSDValue
-    : parseFloat(ethers.formatUnits(campaign.totalDonated, 6));
+    : parseFloat(ethers.formatUnits(campaign.totalRaised, 6));
 
   const goalAmount = parseFloat(ethers.formatUnits(campaign.goalAmount, 6));
 
@@ -57,7 +58,7 @@ export default function CampaignCard({
   const getStatusColor = () => {
     if (campaign.cancelled)
       return darkMode ? "from-red-700 to-red-800" : "from-red-500 to-red-600";
-    if (campaign.funded)
+    if (campaign.withdrawalComplete)
       return darkMode
         ? "from-green-700 to-green-800"
         : "from-green-500 to-green-600";
@@ -75,7 +76,7 @@ export default function CampaignCard({
   // Get status text
   const getStatusText = () => {
     if (campaign.cancelled) return "Cancelled";
-    if (campaign.funded) return "Funded";
+    if (campaign.withdrawalComplete) return "Funded";
     if (!isActive || isExpired) return "Ended";
     if (isSuccessful) return "Successful";
     return "Active";
@@ -84,7 +85,7 @@ export default function CampaignCard({
   // Get status icon
   const getStatusIcon = () => {
     if (campaign.cancelled) return "✖️";
-    if (campaign.funded) return "✅";
+    if (campaign.withdrawalComplete) return "✅";
     if (!isActive || isExpired) return "⏰";
     if (isSuccessful) return "🎯";
     return "🔥";
@@ -166,8 +167,8 @@ export default function CampaignCard({
           transform: isStacked
             ? "none"
             : isHovered
-            ? "perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1.02, 1.02, 1.02)"
-            : "perspective(1000px) rotateX(1deg) rotateY(-0.5deg)",
+              ? "perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1.02, 1.02, 1.02)"
+              : "perspective(1000px) rotateX(1deg) rotateY(-0.5deg)",
         }}
       >
         {/* Theme Gradient Overlay */}

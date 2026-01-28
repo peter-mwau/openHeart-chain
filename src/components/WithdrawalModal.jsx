@@ -138,7 +138,7 @@ export default function WithdrawalModal({
     return maxVal;
   };
 
-  const detected = detectDecimals(campaign.goalAmount, campaign.totalDonated);
+  const detected = detectDecimals(campaign.goalAmount, campaign.totalRaised);
   const fallbackRaisedValue = detected.donatedVal;
 
   const computedGoalUSD = parseFloat(
@@ -161,9 +161,9 @@ export default function WithdrawalModal({
 
   if (
     (computedRaisedUSD === 0 || !isFinite(computedRaisedUSD)) &&
-    campaign.totalDonated > 0n
+    campaign.totalRaised > 0n
   ) {
-    const attempted = computeMaxDonatedAcrossCandidates(campaign.totalDonated);
+    const attempted = computeMaxDonatedAcrossCandidates(campaign.totalRaised);
     if (attempted > 0) {
       computedRaisedUSD = attempted;
     }

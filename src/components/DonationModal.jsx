@@ -88,7 +88,7 @@ export default function DonationModal({
         } catch (error) {
           console.warn(
             "Could not read decimals from contract, using default:",
-            decimals
+            decimals,
           );
         }
       }
@@ -131,7 +131,7 @@ export default function DonationModal({
     }
 
     const toastId = toast.loading(
-      `Approving ${selectedToken?.symbol || "tokens"}...`
+      `Approving ${selectedToken?.symbol || "tokens"}...`,
     );
 
     try {
@@ -166,7 +166,7 @@ export default function DonationModal({
         } catch (error) {
           console.warn(
             "Could not read decimals from contract, using default:",
-            decimals
+            decimals,
           );
         }
       }
@@ -276,7 +276,7 @@ export default function DonationModal({
       if (requiresApproval) {
         setNeedsApproval(true);
         console.log(
-          "Approval required, starting approval process with thirdweb..."
+          "Approval required, starting approval process with thirdweb...",
         );
         const approved = await approveTokens();
         console.log("Approval result:", approved);
@@ -352,9 +352,9 @@ export default function DonationModal({
     try {
       const decimals = selectedToken?.decimals ?? 6;
       const donationInSmallestUnit = Number(
-        ethers.parseUnits(amount, decimals)
+        ethers.parseUnits(amount, decimals),
       );
-      const newTotal = Number(campaign.totalDonated) + donationInSmallestUnit;
+      const newTotal = Number(campaign.totalRaised) + donationInSmallestUnit;
       const goal = Number(campaign.goalAmount);
 
       return goal > 0 ? Math.min((newTotal / goal) * 100, 100) : 0;
@@ -539,7 +539,7 @@ export default function DonationModal({
                     }`}
                   >
                     {(
-                      (Number(campaign.totalDonated) /
+                      (Number(campaign.totalRaised) /
                         Number(campaign.goalAmount)) *
                       100
                     ).toFixed(1)}
@@ -559,10 +559,10 @@ export default function DonationModal({
                     }`}
                     style={{
                       width: `${Math.min(
-                        (Number(campaign.totalDonated) /
+                        (Number(campaign.totalRaised) /
                           Number(campaign.goalAmount)) *
                           100,
-                        100
+                        100,
                       )}%`,
                     }}
                   />
@@ -573,7 +573,7 @@ export default function DonationModal({
                       darkMode ? "text-blue-300/60" : "text-blue-600/60"
                     }`}
                   >
-                    {ethers.formatUnits(campaign.totalDonated, 6)} USDC raised
+                    {ethers.formatUnits(campaign.totalRaised, 6)} USDC raised
                   </span>
                   <span
                     className={`${
@@ -606,8 +606,8 @@ export default function DonationModal({
                             ? `bg-gradient-to-r from-red-600 to-pink-600 text-white shadow-lg shadow-red-900/30`
                             : `bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg shadow-red-200`
                           : darkMode
-                          ? "bg-red-900/20 text-red-300 hover:bg-red-900/30 border border-red-800/30"
-                          : "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
+                            ? "bg-red-900/20 text-red-300 hover:bg-red-900/30 border border-red-800/30"
+                            : "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
                       }`}
                     >
                       {token.symbol}
@@ -637,8 +637,8 @@ export default function DonationModal({
                             ? "bg-gradient-to-r from-red-600 to-pink-600 text-white shadow-lg shadow-red-900/30"
                             : "bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg shadow-red-200"
                           : darkMode
-                          ? "bg-red-900/20 text-red-300 hover:bg-red-900/30 border border-red-800/30"
-                          : "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
+                            ? "bg-red-900/20 text-red-300 hover:bg-red-900/30 border border-red-800/30"
+                            : "bg-red-50 text-red-600 hover:bg-red-100 border border-red-200"
                       }`}
                     >
                       {suggestedAmount} {selectedToken?.symbol || "TOKEN"}
